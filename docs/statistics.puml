@@ -1,0 +1,51 @@
+@startuml
+
+hide circle
+skinparam linetype ortho
+
+entity post {
+    * id: integer
+    --
+    ...
+}
+
+entity post_statistics {
+    * id: integer
+    * post_id: integer
+    --
+    like_count: integer
+    comment_count: integer
+    view_count: integer
+}
+
+entity like {
+    * id: integer
+    * post_statistics_id: integer
+    --
+    * account_id: integer
+    * put_time: timestamp
+
+}
+
+entity view {
+    * id: integer
+    * post_statistics_id: integer
+    --
+    * viewed_time: timestamp
+}
+
+entity comment {
+    * id: integer
+    * post_statistics_id: integer
+    --
+    * commented_time: timestamp
+    * has_reply: boolean
+    * length: integer
+}
+
+post ||--|| post_statistics
+post_statistics ||--o{ like
+post_statistics ||--o{ view
+post_statistics ||--o{ comment
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+
+hide circle
+skinparam linetype ortho
+
+entity account {
+    * id: integer
+    --
+    * username: varchar
+    * password: varchar
+    phone_number: varchar
+    created_at: timestamp
+}
+
+entity profile {
+    * id: integer
+    * account_id: integer
+    --
+    * name: varchar
+    * surname: varchar
+    * profile_id: varchar
+    birthday: date
+    bio: varchar
+}
+
+entity api_tokens {
+    * id: integer
+    * account_id: integer
+    --
+    * token: varchar
+    created_at: timestamp
+    valid_until: timestamp
+    read_access: boolean
+    write_access: boolean
+}
+
+account ||--o{ api_tokens : has
+account ||--|| profile : has
+
+@enduml

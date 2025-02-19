@@ -1,0 +1,45 @@
+@startuml
+
+hide circle
+skinparam linetype ortho
+
+entity account {
+    * id: integer
+    --
+    ...
+}
+
+entity page {
+    * id: integer
+    * account_id: integer
+    --
+    is_visible_for_unauthorized: boolean
+    are_comments_enabled: boolean
+    anyone_can_post: boolean
+}
+
+entity post {
+    * id: integer
+    * page_id: integer
+    --
+    * content: text
+    * post_time: timestamp
+    * author_account_id
+    source_page_id: integer
+    pinned: boolean
+}
+
+entity comment {
+    * id: integer
+    * post_id: integer
+    * author_account_id: integer
+    --
+    * content: text
+    reply_account_id: integer
+}
+
+account ||--|| page : has
+page ||--o{ post : has
+post ||--o{ comment : has
+
+@enduml

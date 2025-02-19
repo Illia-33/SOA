@@ -1,0 +1,78 @@
+model {
+    gateway = service {
+        title 'Gateway'
+        description 'Provides REST API for UI application'
+        technology 'nginx'
+    }
+
+    accountsService = service {
+        title 'Accounts Service'
+        description 'Registers new accounts, authenticate users, provides user info'
+    }
+
+    accountsDb = database {
+        title 'Accounts DB'
+        description 'Storage of account info'
+        technology 'PostgreSQL'
+    }
+
+    postsService = service {
+        title 'Posts Service'
+        description 'Provide posts data'
+    }
+
+    postsDb = database {
+        title 'Posts DB'
+        description 'Storage of posts data'
+        technology 'PostgreSQL'
+    }
+
+    statisticsService = service {
+        title 'Statistics Service'
+        description 'Counting likes, views, comments'
+    }
+
+    statisticsDb = database {
+        title 'Statistics DB'
+        description 'Storage for statistics'
+        technology 'ClickHouse'
+    }
+
+    statisticsBroker = broker {
+        title 'Statistic events broker'
+        description 'Stores occured events for future processing'
+        technology 'Kafka'
+    }
+
+    user -> gateway
+
+    gateway -> accountsService
+    gateway -> postsService
+    gateway -> statisticsBroker
+
+    accountsService -> accountsDb
+
+    postsService -> postsDb
+
+    statisticsService -> statisticsDb
+    statisticsService -> statisticsBroker
+}
+
+views {
+    view of socialNetworkApp {
+        title 'Container view'
+
+        include user
+        
+        group 'Social Network Application' {
+            include gateway,
+                    accountsService,
+                    postsService,
+                    postsDb,
+                    statisticsService,
+                    statisticsDb,
+                    statisticsBroker,
+                    accountsDb
+        }
+    }
+}
