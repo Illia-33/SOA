@@ -1,0 +1,43 @@
+specification {
+    element actor {
+        style {
+            shape person
+        }
+    }
+
+    element service {
+    }
+
+    element database {
+        style {
+            shape storage
+        } 
+    }
+
+    element broker {
+        style {
+            shape queue
+        }
+    }
+}
+
+model {
+    user = actor {
+        title 'User'
+    }
+
+    socialNetworkApp = service {
+        title 'Social Network'
+        description 'Social Network Application'
+    }
+
+    user -> socialNetworkApp 'Uses through UI'
+}
+
+
+views {
+    view contextView {
+        title 'Context view'
+        include user, socialNetworkApp
+    }
+}
