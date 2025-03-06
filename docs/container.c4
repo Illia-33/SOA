@@ -2,7 +2,6 @@ model {
     gateway = service {
         title 'Gateway'
         description 'Provides REST API for UI application'
-        technology 'nginx'
     }
 
     accountsService = service {
