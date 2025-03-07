@@ -6,8 +6,9 @@ skinparam linetype ortho
 entity account {
     * id: integer
     --
-    * username: varchar
+    * login: varchar
     * password: varchar
+    * email: varchar
     phone_number: varchar
     created_at: timestamp
 }
@@ -21,6 +22,7 @@ entity profile {
     * profile_id: varchar
     birthday: date
     bio: varchar
+    updated_at: timestamp
 }
 
 entity api_tokens {
