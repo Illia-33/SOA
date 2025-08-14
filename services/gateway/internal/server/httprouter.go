@@ -1,0 +1,73 @@
+package server
+
+import (
+	"net/http"
+	"soa-socialnetwork/services/gateway/api"
+
+	"github.com/gin-gonic/gin"
+)
+
+type httpRouter struct {
+	*gin.Engine
+}
+
+type requestPerformer[TRequest any, TResponse any] func(*TRequest) (TResponse, httpError)
+type requestPerformerWithID[TRequest any, TResponse any] func(string, *TRequest) (TResponse, httpError)
+
+type emptyResponse struct{}
+
+func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequest, TResponse]) func(*gin.Context) {
+	return createHandlerWithID(func(id string, r *TRequest) (TResponse, httpError) {
+		return doRequest(r)
+	})
+}
+
+func createHandlerWithID[TRequest any, TResponse any](doRequest requestPerformerWithID[TRequest, TResponse]) func(*gin.Context) {
+	ext := jsonExtractor{}
+	return func(ctx *gin.Context) {
+		httpCtx := httpContext{ctx}
+		profileID := httpCtx.Param("id")
+
+		var request TRequest
+		err := ext.Extract(request, httpCtx)
+		if !err.IsOK() {
+			httpCtx.SubmitError(err)
+			return
+		}
+
+		response, err := doRequest(profileID, &request)
+		if !err.IsOK() {
+			httpCtx.SubmitError(err)
+			return
+		}
+
+		httpCtx.JSON(http.StatusOK, response)
+	}
+}
+
+func createRouter(serviceCtx *gatewayServiceContext) httpRouter {
+	router := gin.Default()
+
+	router.POST("/api/v1/profile", createHandler(
+		func(r *api.RegisterProfileRequest) (api.GetProfileResponse, httpError) {
+			return serviceCtx.RegisterProfile(r)
+		},
+	))
+	router.GET("/api/v1/profile/:id", createHandlerWithID(
+		func(id string, r *emptyRequest) (api.GetProfileResponse, httpError) {
+			return serviceCtx.GetProfileInfo(id)
+		},
+	))
+	router.PUT("/api/v1/profile/:id", createHandlerWithID(
+		func(id string, r *api.EditProfileRequest) (emptyResponse, httpError) {
+			return emptyResponse{}, serviceCtx.EditProfileInfo(id, r)
+		},
+	))
+	router.DELETE("/api/v1/profile/:id", createHandlerWithID(
+		func(id string, r *emptyRequest) (emptyResponse, httpError) {
+			return emptyResponse{}, serviceCtx.DeleteProfile(id)
+		},
+	))
+
+	return httpRouter{router}
+}

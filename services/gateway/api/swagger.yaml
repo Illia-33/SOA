@@ -1,0 +1,161 @@
+openapi: 3.0.4
+info:
+  title: Gateway API
+  version: 1.0.0
+servers:
+- url: /
+paths:
+  /api/v1/profile:
+    post:
+      summary: Register a new profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterProfileRequest"
+      responses:
+        "200":
+          description: Profile has been created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterProfileResponse"
+        "400":
+          description: Invalid arguments
+  /api/v1/profile/{id}:
+    get:
+      summary: Get profile information
+      parameters:
+      - name: id
+        in: path
+        description: profile ID
+        required: true
+        style: simple
+        explode: false
+        schema: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProfileResponse"
+        "401":
+          description: User is not authorized
+        "404":
+          description: Cannot find profile with specified ID
+    put:
+      summary: Modify profile information
+      parameters:
+      - name: id
+        in: path
+        description: profile ID
+        required: true
+        style: simple
+        explode: false
+        schema: {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditProfileRequest"
+      responses:
+        "200":
+          description: OK, profile information has been changed
+        "400":
+          description: Invalid values of new profile information
+        "401":
+          description: User is not authorized
+        "403":
+          description: User doesn't have rights to change profile info
+        "404":
+          description: Cannot find profile with specified ID
+    delete:
+      summary: Delete profile
+      parameters:
+      - name: id
+        in: path
+        description: profile ID
+        required: true
+        style: simple
+        explode: false
+        schema: {}
+      responses:
+        "200":
+          description: OK, profile has been deleted successfully
+        "401":
+          description: User is not authorized
+        "403":
+          description: User doesn't have rights to delete profile
+        "404":
+          description: Cannot find profile with specified ID
+components:
+  schemas:
+    RegisterProfileRequest:
+      properties:
+        login:
+          type: string
+          minLength: 1
+          maxLength: 32
+        password:
+          type: string
+          minLength: 6
+          maxLength: 32
+        email:
+          type: string
+          format: email
+        phone_number:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 32
+        surname:
+          type: string
+          minLength: 1
+          maxLength: 32
+    RegisterProfileResponse:
+      properties:
+        profile_id:
+          type: string
+          format: uuid
+      example:
+        profile_id: ""
+    GetProfileResponse:
+      properties:
+        name:
+          type: string
+        surname:
+          type: string
+        birthday:
+          type: string
+          format: date
+        bio:
+          type: string
+          maxLength: 256
+      example:
+        birthday: ""
+        surname: ""
+        name: ""
+        bio: ""
+    EditProfileRequest:
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 32
+        surname:
+          type: string
+          minLength: 1
+          maxLength: 32
+        birthday:
+          type: string
+          format: date
+        bio:
+          type: string
+          maxLength: 256
+        phone_number:
+          type: string
+        email:
+          type: string
+          format: email
