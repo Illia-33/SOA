@@ -1,0 +1,6 @@
+db
+Dockerfile
+**/.dockerignore
+**/.gitignore
+**/*.md
+**/*.pb.go
