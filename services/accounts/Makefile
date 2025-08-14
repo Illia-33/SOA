@@ -9,7 +9,7 @@ proto:
 
 .PHONY: build
 build: proto
-	go build -o $(PWD)/accounts-service soa-socialnetwork/services/accounts/src
+	go build -o $(PWD)/accounts-service $(PWD)/cmd
 
 .PHONY: run
 run: proto build

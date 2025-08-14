@@ -1,0 +1,39 @@
+services:
+  gateway:
+    build:
+      dockerfile: ${PWD}/services/gateway/Dockerfile
+    container_name: gateway_service
+    depends_on:
+      - accounts
+    environment:
+      GATEWAY_SERVICE_PORT: ${GATEWAY_SERVICE_PORT}
+    ports:
+      - "8080:8080"
+  
+  postgres:
+    image: postgres:17-alpine
+    container_name: accounts-postgres
+    environment:
+      POSTGRES_USER: ${ACCOUNTS_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${ACCOUNTS_POSTGRES_PASSWORD}
+    volumes:
+      - ${PWD}/services/accounts/db/init:/docker-entrypoint-initdb.d
+      - ${ACCOUNTS_POSTGRES_DATA}:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U ${ACCOUNTS_POSTGRES_USER}
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  
+  accounts:
+    build:
+      dockerfile: ${PWD}/services/accounts/Dockerfile
+    container_name: accounts-service
+    depends_on:
+      - postgres
+    environment:
+      ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
+      DB_USER: ${ACCOUNTS_POSTGRES_USER}
+      DB_PASSWORD: ${ACCOUNTS_POSTGRES_PASSWORD}
+  

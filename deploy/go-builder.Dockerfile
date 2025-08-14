@@ -15,7 +15,6 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31 \
 
 WORKDIR /source
 
-COPY --from=go-mods ./go.mod ./go.mod
-COPY --from=go-mods ./go.sum ./go.sum
+COPY --from=go-mods . .
 
 ENTRYPOINT [ "/bin/bash" ]

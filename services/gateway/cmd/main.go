@@ -10,14 +10,14 @@ import (
 )
 
 func extractPort() (int, error) {
-	port, exists := os.LookupEnv("SOA_GATEWAY_SERVICE_PORT")
+	port, exists := os.LookupEnv("GATEWAY_SERVICE_PORT")
 	if !exists {
 		return 8080, nil
 	}
 
 	num, err := strconv.Atoi(port)
 	if err != nil {
-		return 0, fmt.Errorf("cannot convert SOA_GATEWAY_SERVICE_PORT environment variable to number (%v)", err)
+		return 0, fmt.Errorf("cannot convert GATEWAY_SERVICE_PORT environment variable to number (%v)", err)
 	}
 
 	return num, nil

@@ -1,6 +1,6 @@
-db
-Dockerfile
+**/Dockerfile
 **/.dockerignore
 **/.gitignore
 **/*.md
 **/*.pb.go
+.env
