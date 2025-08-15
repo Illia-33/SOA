@@ -17,7 +17,7 @@ services:
       POSTGRES_USER: ${ACCOUNTS_POSTGRES_USER}
       POSTGRES_PASSWORD: ${ACCOUNTS_POSTGRES_PASSWORD}
     volumes:
-      - ${PWD}/services/accounts/db/init:/docker-entrypoint-initdb.d
+      - ${PWD}/services/accounts/db/migrations:/docker-entrypoint-initdb.d
       - ${ACCOUNTS_POSTGRES_DATA}:/var/lib/postgresql/data
     healthcheck:
       test: pg_isready -U ${ACCOUNTS_POSTGRES_USER}
