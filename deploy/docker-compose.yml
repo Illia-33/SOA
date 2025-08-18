@@ -32,7 +32,7 @@ services:
       dockerfile: ${PWD}/services/accounts/Dockerfile
     container_name: accounts-service
     depends_on:
-      - postgres
+      - accounts-postgres
     environment:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
       DB_HOST: "accounts-postgres"
