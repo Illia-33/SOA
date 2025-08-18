@@ -9,6 +9,10 @@ builder-image:
 	--tag soa-go-builder \
 	$(PWD)
 
+.PHONY: autogen
+autogen:
+	(cd $(PWD)/services/accounts; make proto)
+
 .PHONY: run
 run: builder-image
 	docker compose \

@@ -1,9 +1,5 @@
 FROM soa-go-builder:latest AS builder
 
-WORKDIR /source/services/accounts
-
-RUN make proto
-
 WORKDIR /source/services/gateway
 
 RUN make build
