@@ -35,11 +35,13 @@ func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 	sql := `
 	WITH acc_id AS (
 		INSERT INTO accounts(login, password, email, phone_number)
-		VALUES ('$1', '$2', '$3', '$4')
-		RETURNING id;
+		VALUES ($1, $2, $3, $4)
+		RETURNING id as account_id
 	)
 	INSERT INTO profiles(account_id, name, surname, profile_id)
-	VALUES (acc_id, '$5', '$6', '$7');
+	SELECT account_id, name, surname, profile_id
+	FROM (VALUES ($5, $6, $7::uuid)) as t (name, surname, profile_id)
+	CROSS JOIN acc_id;
 	`
 
 	_, err = s.dbpool.Exec(ctx, sql, req.Login, req.Password, req.Email, req.PhoneNumber, req.Name, req.Surname, profileUUID)
@@ -55,7 +57,7 @@ func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 func (s *AccountsService) UnregisterUser(ctx context.Context, req *pb.UnregisterUserRequest) (*pb.Empty, error) {
 	sql := `
 	WITH acc_id AS (
-		DELETE FROM profiles WHERE profile_id = '$1'
+		DELETE FROM profiles WHERE profile_id = $1
 		RETURNING id;
 	)
 	DELETE FROM accounts WHERE id = acc_id;
@@ -73,7 +75,7 @@ func (s *AccountsService) GetProfile(ctx context.Context, req *pb.GetProfileRequ
 	sql := `
 	SELECT name, surname, birthday, bio
 	FROM profiles
-	WHERE profile_id = '$1'
+	WHERE profile_id = $1
 	LIMIT 1;
 	`
 	row := s.dbpool.QueryRow(ctx, sql, req.ProfileId)
@@ -126,7 +128,7 @@ func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRe
 		surname = COALESCE($2, surname),
 		birthday = COALESCE($3, birthday),
 		bio = COALESCE($4, bio)
-	WHERE profile_id = '$5'
+	WHERE profile_id = $5
 	`
 
 	_, err := s.dbpool.Exec(ctx, sql, toPostgresOptArg(p.Name), toPostgresOptArg(p.Surname), toPostgresOptArg(p.Birthday), toPostgresOptArg(p.Bio), req.ProfileId)
