@@ -1,28 +1,28 @@
-package server
+package httperr
 
 import (
 	"net/http"
 )
 
-type httpError struct {
+type Err struct {
 	StatusCode int
 	Err        error
 }
 
-func newHttpError(statusCode int, err error) httpError {
-	return httpError{
+func New(statusCode int, err error) Err {
+	return Err{
 		StatusCode: statusCode,
 		Err:        err,
 	}
 }
 
-func httpOK() httpError {
-	return httpError{
+func OK() Err {
+	return Err{
 		StatusCode: http.StatusOK,
 		Err:        nil,
 	}
 }
 
-func (e *httpError) isOK() bool {
+func (e *Err) IsOK() bool {
 	return e.StatusCode == http.StatusOK && e.Err == nil
 }

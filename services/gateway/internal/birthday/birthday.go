@@ -1,8 +1,10 @@
-package server
+package birthday
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
+	"time"
 )
 
 const (
@@ -63,11 +65,11 @@ type birthday struct {
 	year  int
 }
 
-// Parse a birthday from the string s in format DD-MM-YYYY
-func parseBirthday(s string) (b birthday, err error) {
-	birthdayRegexp := regexp.MustCompile(`^\d{2}-\d{2}-\d{4}$`)
+// Parse a birthday from the string s in format YYYY-MM-DD
+func Parse(s string) (b birthday, err error) {
+	birthdayRegexp := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 	if !birthdayRegexp.MatchString(s) {
-		err = errors.New("birthday must be in format DD-MM-YYYY")
+		err = errors.New("birthday must be in format YYYY-MM-DD")
 		return
 	}
 
@@ -78,7 +80,7 @@ func parseBirthday(s string) (b birthday, err error) {
 }
 
 // Checks if birthday represents a valid date
-func (b birthday) isValid() bool {
+func (b birthday) IsValid() bool {
 	if b.year < 0 {
 		return false
 	}
@@ -88,4 +90,12 @@ func (b birthday) isValid() bool {
 	}
 
 	return 1 <= b.day && b.day <= daysPerMonth(b.month, b.year)
+}
+
+func (b birthday) YYYY_MM_DD() string {
+	return fmt.Sprintf("%04d-%02d-%02d", b.year, b.month, b.day)
+}
+
+func (b birthday) AsTime() time.Time {
+	return time.Date(b.year, time.Month(b.month), b.day, 0, 0, 0, 0, nil)
 }

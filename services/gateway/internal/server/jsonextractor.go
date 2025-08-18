@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"regexp"
 	"soa-socialnetwork/services/gateway/api"
+	"soa-socialnetwork/services/gateway/internal/birthday"
+	"soa-socialnetwork/services/gateway/internal/httperr"
 )
 
 type emptyRequest struct{}
@@ -13,18 +15,18 @@ type emptyRequest struct{}
 type jsonExtractor struct {
 }
 
-func (j *jsonExtractor) extract(r any, ctx httpContext) httpError {
+func (j *jsonExtractor) extract(r any, ctx httpContext) httperr.Err {
 	err := j.bindJSON(r, ctx)
 	if err != nil {
-		return newHttpError(http.StatusBadRequest, fmt.Errorf("cannot bind json: %v", err))
+		return httperr.New(http.StatusBadRequest, fmt.Errorf("cannot bind json: %v", err))
 	}
 
 	err = j.validateRequest(r)
 	if err != nil {
-		return newHttpError(http.StatusBadRequest, fmt.Errorf("bad request: %v", err))
+		return httperr.New(http.StatusBadRequest, fmt.Errorf("bad request: %v", err))
 	}
 
-	return httpOK()
+	return httperr.OK()
 }
 
 func (j *jsonExtractor) bindJSON(r any, ctx httpContext) error {
@@ -94,7 +96,7 @@ func (j *jsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) 
 	}
 
 	if !j.validateBirthday(req.Birthday) {
-		return errors.New("birthday: must be in format DD-MM-YYYY")
+		return errors.New("birthday: must be in format YYYY-MM-DD")
 	}
 
 	if len(req.Bio) > 256 {
@@ -123,10 +125,10 @@ func (j *jsonExtractor) validatePhoneNumber(s string) bool {
 }
 
 func (j *jsonExtractor) validateBirthday(s string) bool {
-	b, err := parseBirthday(s)
+	b, err := birthday.Parse(s)
 	if err != nil {
 		return false
 	}
 
-	return b.isValid()
+	return b.IsValid()
 }
