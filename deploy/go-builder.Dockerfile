@@ -16,6 +16,8 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31 \
 WORKDIR /source
 
 COPY --from=go-mods . .
+
+RUN go mod download
 RUN make autogen
 
 ENTRYPOINT [ "/bin/bash" ]
