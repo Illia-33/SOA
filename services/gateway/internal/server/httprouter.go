@@ -30,7 +30,7 @@ func createHandlerWithID[TRequest any, TResponse any](doRequest requestPerformer
 		profileID := httpCtx.Param("id")
 
 		var request TRequest
-		err := ext.extract(request, httpCtx)
+		err := ext.extract(&request, httpCtx)
 		if !err.IsOK() {
 			httpCtx.submitError(err)
 			return
