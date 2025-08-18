@@ -2,7 +2,7 @@ services:
   gateway:
     build:
       dockerfile: ${PWD}/services/gateway/Dockerfile
-    container_name: gateway_service
+    container_name: gateway-service
     depends_on:
       - accounts
     environment:
@@ -12,7 +12,7 @@ services:
   
   accounts-postgres:
     image: postgres:17-alpine
-    container_name: accounts_postgres
+    container_name: accounts-postgres
     environment:
       POSTGRES_USER: ${ACCOUNTS_POSTGRES_USER}
       POSTGRES_PASSWORD: ${ACCOUNTS_POSTGRES_PASSWORD}
