@@ -10,6 +10,7 @@ import (
 	"soa-socialnetwork/services/gateway/internal/httperr"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -21,7 +22,7 @@ func initService() gatewayService {
 }
 
 func (c *gatewayService) createAccountsServiceStub() (pb.AccountsServiceClient, error) {
-	conn, err := grpc.NewClient("accounts-service")
+	conn, err := grpc.NewClient("accounts-service:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
