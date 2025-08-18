@@ -34,7 +34,7 @@ func (j *jsonExtractor) bindJSON(r any, ctx httpContext) error {
 	case *api.RegisterProfileRequest, *api.EditProfileRequest:
 		return ctx.BindJSON(v)
 
-	case emptyRequest:
+	case *emptyRequest:
 		return nil
 
 	default:
@@ -50,7 +50,7 @@ func (j *jsonExtractor) validateRequest(r any) error {
 	case *api.EditProfileRequest:
 		return j.validateEditProfileRequest(v)
 
-	case emptyRequest:
+	case *emptyRequest:
 		return nil
 
 	default:
