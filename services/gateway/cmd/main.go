@@ -36,9 +36,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("initializing server failed: %v", err)
 	}
-	log.Print("success")
+	log.Println("success")
 
-	log.Print("running server...")
+	log.Println("running server...")
 	err = s.Run()
 	if err != nil {
 		log.Fatalf("server error: %v", err)
