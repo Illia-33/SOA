@@ -55,7 +55,8 @@ message GetProfileResponse {
 };
 
 message EditProfileRequest {
-    Profile edited_profile_data = 1;
+    string profile_id = 1;
+    Profile edited_profile_data = 2;
 };
 
 service AccountsService {

@@ -9,28 +9,31 @@ import (
 	"google.golang.org/grpc"
 )
 
-type AccountsServiceServer struct {
-	pb.UnimplementedAccountsServiceServer
-
-	listener net.Listener
-	server   *grpc.Server
+type Server struct {
+	listener   net.Listener
+	grpcServer *grpc.Server
 }
 
-func Create(port int) (*AccountsServiceServer, error) {
+func Create(port int, cfg AccountsServiceConfig) (*Server, error) {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err
 	}
 
-	s := grpc.NewServer()
-	pb.RegisterAccountsServiceServer(s, &AccountsServiceServer{})
+	grpcServer := grpc.NewServer()
+	service, err := newAccountsService(cfg)
+	if err != nil {
+		return nil, err
+	}
 
-	return &AccountsServiceServer{
-		listener: lis,
-		server:   s,
+	pb.RegisterAccountsServiceServer(grpcServer, service)
+
+	return &Server{
+		listener:   lis,
+		grpcServer: grpcServer,
 	}, nil
 }
 
-func (s *AccountsServiceServer) Run() error {
-	return s.server.Serve(s.listener)
+func (s *Server) Run() error {
+	return s.grpcServer.Serve(s.listener)
 }

@@ -10,12 +10,13 @@ services:
     ports:
       - "8080:8080"
   
-  postgres:
+  accounts-postgres:
     image: postgres:17-alpine
-    container_name: accounts-postgres
+    container_name: accounts_postgres
     environment:
       POSTGRES_USER: ${ACCOUNTS_POSTGRES_USER}
       POSTGRES_PASSWORD: ${ACCOUNTS_POSTGRES_PASSWORD}
+      POSTGRES_DB: accounts-postgres
     volumes:
       - ${PWD}/services/accounts/db/migrations:/docker-entrypoint-initdb.d
       - ${ACCOUNTS_POSTGRES_DATA}:/var/lib/postgresql/data
@@ -34,6 +35,8 @@ services:
       - postgres
     environment:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
+      DB_HOST: "accounts-postgres"
       DB_USER: ${ACCOUNTS_POSTGRES_USER}
       DB_PASSWORD: ${ACCOUNTS_POSTGRES_PASSWORD}
+      DB_POOL_SIZE: 5
   

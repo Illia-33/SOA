@@ -1,31 +1,31 @@
 CREATE TABLE IF NOT EXISTS accounts (
-    id integer PRIMARY KEY,
-    login varchar(32),
-    password varchar(32),
-    email varchar(320),
-    phone_number varchar(18),
-    created_at timestamp,
-    updated_at timestamp
+    id INTEGER PRIMARY KEY,
+    login VARCHAR(32),
+    password VARCHAR(32),
+    email VARCHAR(320),
+    phone_number VARCHAR(18),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS profiles (
-    id integer PRIMARY KEY,
-    account_id integer,
-    name varchar(32),
-    surname varchar(32),
-    profile_id uuid,
-    birthday date,
-    bio varchar(200),
-    created_at timestamp,
-    updated_at timestamp
+    id INTEGER PRIMARY KEY,
+    account_id INTEGER,
+    name VARCHAR(32),
+    surname VARCHAR(32),
+    profile_id UUID,
+    birthday DATE,
+    bio VARCHAR(200),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS api_tokens (
-    id integer PRIMARY KEY,
-    account_id integer,
-    token varchar(64),
-    valid_untile timestamp,
-    read_access boolean,
-    write_access boolean,
-    created_at timestamp
+    id INTEGER PRIMARY KEY,
+    account_id INTEGER,
+    token VARCHAR(64),
+    valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    read_access BOOLEAN,
+    write_access BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
