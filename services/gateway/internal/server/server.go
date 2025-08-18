@@ -5,7 +5,7 @@ import (
 )
 
 type GatewayServer struct {
-	context gatewayServiceContext
+	context gatewayService
 	router  httpRouter
 	port    int
 }
@@ -15,7 +15,7 @@ func (s *GatewayServer) Run() error {
 }
 
 func Create(port int) (GatewayServer, error) {
-	context := createContext()
+	context := initService()
 	router := createRouter(&context)
 	return GatewayServer{
 		context: context,

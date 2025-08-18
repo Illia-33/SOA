@@ -6,7 +6,7 @@ type httpContext struct {
 	*gin.Context
 }
 
-func (ctx *httpContext) SubmitError(err httpError) {
+func (ctx *httpContext) submitError(err httpError) {
 	ctx.Status(err.StatusCode)
 	ctx.Error(err.Err)
 }

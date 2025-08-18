@@ -13,7 +13,7 @@ type emptyRequest struct{}
 type jsonExtractor struct {
 }
 
-func (j *jsonExtractor) Extract(r any, ctx httpContext) httpError {
+func (j *jsonExtractor) extract(r any, ctx httpContext) httpError {
 	err := j.bindJSON(r, ctx)
 	if err != nil {
 		return newHttpError(http.StatusBadRequest, fmt.Errorf("cannot bind json: %v", err))

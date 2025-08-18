@@ -21,7 +21,7 @@ func Create(port int, cfg AccountsServiceConfig) (*Server, error) {
 	}
 
 	grpcServer := grpc.NewServer()
-	service, err := newAccountsService(cfg)
+	service, err := createAccountsService(cfg)
 	if err != nil {
 		return nil, err
 	}

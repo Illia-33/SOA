@@ -23,6 +23,6 @@ func httpOK() httpError {
 	}
 }
 
-func (e *httpError) IsOK() bool {
+func (e *httpError) isOK() bool {
 	return e.StatusCode == http.StatusOK && e.Err == nil
 }

@@ -29,15 +29,15 @@ func createHandlerWithID[TRequest any, TResponse any](doRequest requestPerformer
 		profileID := httpCtx.Param("id")
 
 		var request TRequest
-		err := ext.Extract(request, httpCtx)
-		if !err.IsOK() {
-			httpCtx.SubmitError(err)
+		err := ext.extract(request, httpCtx)
+		if !err.isOK() {
+			httpCtx.submitError(err)
 			return
 		}
 
 		response, err := doRequest(profileID, &request)
-		if !err.IsOK() {
-			httpCtx.SubmitError(err)
+		if !err.isOK() {
+			httpCtx.submitError(err)
 			return
 		}
 
@@ -45,7 +45,7 @@ func createHandlerWithID[TRequest any, TResponse any](doRequest requestPerformer
 	}
 }
 
-func createRouter(serviceCtx *gatewayServiceContext) httpRouter {
+func createRouter(serviceCtx *gatewayService) httpRouter {
 	router := gin.Default()
 
 	router.POST("/api/v1/profile", createHandler(

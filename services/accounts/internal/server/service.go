@@ -137,7 +137,7 @@ func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRe
 	return &pb.Empty{}, nil
 }
 
-func newAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) {
+func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) {
 	connStr := fmt.Sprintf("user=%s password=%s host=%s port=5432 dbname=accounts-postgres sslmode=disable pool_max_conns=%d", cfg.DbUser, cfg.DbPassword, cfg.DbHost, cfg.DbPoolSize)
 	pool, err := pgxpool.New(context.Background(), connStr)
 
