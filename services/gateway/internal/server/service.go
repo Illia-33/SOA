@@ -37,7 +37,14 @@ func (c *gatewayService) RegisterProfile(req *api.RegisterProfileRequest) (respo
 		return
 	}
 
-	r, err := stub.RegisterUser(context.Background(), &pb.RegisterUserRequest{})
+	r, err := stub.RegisterUser(context.Background(), &pb.RegisterUserRequest{
+		Login:       req.Login,
+		Password:    req.Password,
+		Email:       req.Email,
+		PhoneNumber: req.PhoneNumber,
+		Name:        req.Name,
+		Surname:     req.Surname,
+	})
 	if err != nil {
 		httpErr = httperr.New(http.StatusInternalServerError, err)
 		return
