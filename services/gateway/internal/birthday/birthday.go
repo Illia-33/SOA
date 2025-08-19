@@ -60,9 +60,9 @@ func daysPerMonth(month int, year int) int {
 }
 
 type birthday struct {
-	day   int
-	month int
 	year  int
+	month int
+	day   int
 }
 
 // Parse a birthday from the string s in format YYYY-MM-DD
@@ -73,15 +73,15 @@ func Parse(s string) (b birthday, err error) {
 		return
 	}
 
-	b.day = stringToInt(s[0:2])
-	b.month = stringToInt(s[3:5])
-	b.year = stringToInt(s[6:10])
+	b.year = stringToInt(s[0:4])
+	b.month = stringToInt(s[5:7])
+	b.day = stringToInt(s[8:10])
 	return
 }
 
 // Checks if birthday represents a valid date
 func (b birthday) IsValid() bool {
-	if b.year < 0 {
+	if b.year <= 0 {
 		return false
 	}
 
@@ -97,5 +97,5 @@ func (b birthday) YYYY_MM_DD() string {
 }
 
 func (b birthday) AsTime() time.Time {
-	return time.Date(b.year, time.Month(b.month), b.day, 0, 0, 0, 0, nil)
+	return time.Date(b.year, time.Month(b.month), b.day, 0, 0, 0, 0, time.Local)
 }
