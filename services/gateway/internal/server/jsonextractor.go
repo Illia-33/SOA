@@ -87,15 +87,15 @@ func (j *jsonExtractor) validateRegisterProfileRequest(req *api.RegisterProfileR
 }
 
 func (j *jsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) error {
-	if !(1 <= len(req.Name) && len(req.Name) <= 32) {
+	if !(0 <= len(req.Name) && len(req.Name) <= 32) {
 		return errors.New("name: length must be in [1; 32]")
 	}
 
-	if !(1 <= len(req.Surname) && len(req.Surname) <= 32) {
+	if !(0 <= len(req.Surname) && len(req.Surname) <= 32) {
 		return errors.New("surname: length must be in [1; 32]")
 	}
 
-	if !j.validateBirthday(req.Birthday) {
+	if len(req.Birthday) > 0 && !j.validateBirthday(req.Birthday) {
 		return errors.New("birthday: must be in format YYYY-MM-DD")
 	}
 
@@ -103,11 +103,11 @@ func (j *jsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) 
 		return errors.New("bio: length must be <= 256")
 	}
 
-	if !j.validatePhoneNumber(req.PhoneNumber) {
+	if len(req.PhoneNumber) > 0 && !j.validatePhoneNumber(req.PhoneNumber) {
 		return errors.New("phone number: must be in format +0123456789")
 	}
 
-	if !j.validateEmail(req.Email) {
+	if len(req.Email) > 0 && !j.validateEmail(req.Email) {
 		return errors.New("email: invalid")
 	}
 
