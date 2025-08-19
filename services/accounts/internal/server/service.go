@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
+	"log"
 
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -57,10 +58,12 @@ func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 func (s *AccountsService) UnregisterUser(ctx context.Context, req *pb.UnregisterUserRequest) (*pb.Empty, error) {
 	sql := `
 	WITH acc_id AS (
-		DELETE FROM profiles WHERE profile_id = $1
-		RETURNING id;
+		DELETE FROM profiles 
+		WHERE profile_id = $1
+		RETURNING account_id
 	)
-	DELETE FROM accounts WHERE id = acc_id;
+	DELETE FROM accounts
+	WHERE id IN (SELECT account_id FROM acc_id);
 	`
 
 	_, err := s.dbpool.Exec(ctx, sql, req.ProfileId)
@@ -80,22 +83,28 @@ func (s *AccountsService) GetProfile(ctx context.Context, req *pb.GetProfileRequ
 	`
 	row := s.dbpool.QueryRow(ctx, sql, req.ProfileId)
 	var (
-		name     string
-		surname  string
-		birthday time.Time
-		bio      string
+		name       pgtype.Text
+		surname    pgtype.Text
+		pgBirthday pgtype.Date
+		bio        pgtype.Text
 	)
 
-	if err := row.Scan(&name, &surname, &birthday, &bio); err != nil {
+	if err := row.Scan(&name, &surname, &pgBirthday, &bio); err != nil {
+		log.Printf("error while getting %s profile: %v", req.ProfileId, err)
 		return nil, errors.New("profile not found")
 	}
 
+	var birthday *timestamppb.Timestamp = nil
+	if pgBirthday.Valid {
+		birthday = timestamppb.New(pgBirthday.Time)
+	}
+
 	return &pb.Profile{
-		Name:      name,
-		Surname:   surname,
+		Name:      name.String,
+		Surname:   surname.String,
 		ProfileId: req.ProfileId,
-		Birthday:  timestamppb.New(birthday),
-		Bio:       bio,
+		Birthday:  birthday,
+		Bio:       bio.String,
 	}, nil
 }
 func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRequest) (*pb.Empty, error) {
@@ -105,35 +114,60 @@ func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRe
 
 	p := req.EditedProfileData
 
-	toPostgresOptArg := func(obj any) string {
-		switch v := obj.(type) {
-		case string:
-			if len(v) > 0 {
-				return fmt.Sprintf("'%s'", v)
-			}
-		case *timestamppb.Timestamp:
-			if v != nil {
-				year, month, day := v.AsTime().Date()
-				return fmt.Sprintf("%04d-%02d-%02d", year, int(month), day)
-			}
+	stringToPgText := func(s string) pgtype.Text {
+		if len(s) == 0 {
+			return pgtype.Text{}
 		}
 
-		return "NULL"
+		return pgtype.Text{
+			String: s,
+			Valid:  true,
+		}
 	}
 
+	pbTimestampToPgDate := func(ts *timestamppb.Timestamp) pgtype.Date {
+		if ts == nil {
+			return pgtype.Date{}
+		}
+
+		return pgtype.Date{
+			Time:             ts.AsTime(),
+			InfinityModifier: pgtype.Finite,
+			Valid:            true,
+		}
+	}
+
+	pgName := stringToPgText(p.Name)
+	pgSurname := stringToPgText(p.Surname)
+	pgBirthday := pbTimestampToPgDate(p.Birthday)
+	pgBio := stringToPgText(p.Bio)
+
 	sql := `
-	UPDATE profiles
-	SET
-		name = COALESCE($1, name),
-		surname = COALESCE($2, surname),
-		birthday = COALESCE($3, birthday),
-		bio = COALESCE($4, bio)
-	WHERE profile_id = $5
+	WITH affected_rows AS (
+		UPDATE profiles
+		SET
+			name = COALESCE($1, name),
+			surname = COALESCE($2, surname),
+			birthday = COALESCE($3, birthday),
+			bio = COALESCE($4, bio)
+		WHERE profile_id = $5
+		RETURNING 1
+	)
+	SELECT count(*) FROM affected_rows;
 	`
 
-	_, err := s.dbpool.Exec(ctx, sql, toPostgresOptArg(p.Name), toPostgresOptArg(p.Surname), toPostgresOptArg(p.Birthday), toPostgresOptArg(p.Bio), req.ProfileId)
-	if err != nil {
+	row := s.dbpool.QueryRow(ctx, sql, pgName, pgSurname, pgBirthday, pgBio, req.ProfileId)
+	var cnt int
+	if err := row.Scan(&cnt); err != nil {
 		return nil, err
+	}
+
+	if cnt == 0 {
+		return nil, errors.New("user not found")
+	}
+
+	if cnt != 1 {
+		log.Printf("warning: there more than one users with profile id %s", req.ProfileId)
 	}
 
 	return &pb.Empty{}, nil
