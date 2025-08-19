@@ -6,8 +6,8 @@ import (
 	"net/http"
 	pb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/gateway/api"
-	"soa-socialnetwork/services/gateway/internal/birthday"
-	"soa-socialnetwork/services/gateway/internal/httperr"
+	"soa-socialnetwork/services/gateway/internal/server/birthday"
+	"soa-socialnetwork/services/gateway/internal/server/httperr"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -51,7 +51,7 @@ func (c *gatewayService) RegisterProfile(req *api.RegisterProfileRequest) (respo
 	}
 
 	response.ProfileID = r.ProfileId
-	httpErr = httperr.OK()
+	httpErr = httperr.Ok()
 	return
 }
 
@@ -76,7 +76,7 @@ func (c *gatewayService) GetProfileInfo(profileId string) (response api.GetProfi
 		Birthday: r.Birthday.AsTime().Format("2006-01-02"),
 		Bio:      r.Bio,
 	}
-	httpErr = httperr.OK()
+	httpErr = httperr.Ok()
 	return
 }
 
@@ -108,7 +108,7 @@ func (c *gatewayService) EditProfileInfo(profileId string, req *api.EditProfileR
 		return httperr.New(http.StatusInternalServerError, err)
 	}
 
-	return httperr.OK()
+	return httperr.Ok()
 }
 
 func (c *gatewayService) DeleteProfile(profileId string) httperr.Err {
@@ -124,5 +124,5 @@ func (c *gatewayService) DeleteProfile(profileId string) httperr.Err {
 		return httperr.New(http.StatusInternalServerError, err)
 	}
 
-	return httperr.OK()
+	return httperr.Ok()
 }

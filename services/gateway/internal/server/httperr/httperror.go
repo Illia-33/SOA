@@ -16,13 +16,13 @@ func New(statusCode int, err error) Err {
 	}
 }
 
-func OK() Err {
+func Ok() Err {
 	return Err{
 		StatusCode: http.StatusOK,
 		Err:        nil,
 	}
 }
 
-func (e *Err) IsOK() bool {
+func (e *Err) IsOk() bool {
 	return e.StatusCode == http.StatusOK && e.Err == nil
 }

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"soa-socialnetwork/services/gateway/internal/httperr"
+	"soa-socialnetwork/services/gateway/internal/server/httperr"
 
 	"github.com/gin-gonic/gin"
 )

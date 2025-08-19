@@ -1,4 +1,4 @@
-package server
+package jsonextractor
 
 import (
 	"errors"
@@ -6,16 +6,22 @@ import (
 	"net/http"
 	"regexp"
 	"soa-socialnetwork/services/gateway/api"
-	"soa-socialnetwork/services/gateway/internal/birthday"
-	"soa-socialnetwork/services/gateway/internal/httperr"
+	"soa-socialnetwork/services/gateway/internal/server/birthday"
+	"soa-socialnetwork/services/gateway/internal/server/httperr"
+
+	"github.com/gin-gonic/gin"
 )
 
-type emptyRequest struct{}
+type EmptyRequest struct{}
 
-type jsonExtractor struct {
+type JsonExtractor struct {
 }
 
-func (j *jsonExtractor) extract(r any, ctx httpContext) httperr.Err {
+func New() JsonExtractor {
+	return JsonExtractor{}
+}
+
+func (j *JsonExtractor) Extract(r any, ctx *gin.Context) httperr.Err {
 	err := j.bindJSON(r, ctx)
 	if err != nil {
 		return httperr.New(http.StatusBadRequest, fmt.Errorf("cannot bind json: %v", err))
@@ -26,15 +32,15 @@ func (j *jsonExtractor) extract(r any, ctx httpContext) httperr.Err {
 		return httperr.New(http.StatusBadRequest, fmt.Errorf("bad request: %v", err))
 	}
 
-	return httperr.OK()
+	return httperr.Ok()
 }
 
-func (j *jsonExtractor) bindJSON(r any, ctx httpContext) error {
+func (j *JsonExtractor) bindJSON(r any, ctx *gin.Context) error {
 	switch v := r.(type) {
 	case *api.RegisterProfileRequest, *api.EditProfileRequest:
 		return ctx.BindJSON(v)
 
-	case *emptyRequest:
+	case *EmptyRequest:
 		return nil
 
 	default:
@@ -42,7 +48,7 @@ func (j *jsonExtractor) bindJSON(r any, ctx httpContext) error {
 	}
 }
 
-func (j *jsonExtractor) validateRequest(r any) error {
+func (j *JsonExtractor) validateRequest(r any) error {
 	switch v := r.(type) {
 	case *api.RegisterProfileRequest:
 		return j.validateRegisterProfileRequest(v)
@@ -50,7 +56,7 @@ func (j *jsonExtractor) validateRequest(r any) error {
 	case *api.EditProfileRequest:
 		return j.validateEditProfileRequest(v)
 
-	case *emptyRequest:
+	case *EmptyRequest:
 		return nil
 
 	default:
@@ -58,7 +64,7 @@ func (j *jsonExtractor) validateRequest(r any) error {
 	}
 }
 
-func (j *jsonExtractor) validateRegisterProfileRequest(req *api.RegisterProfileRequest) error {
+func (j *JsonExtractor) validateRegisterProfileRequest(req *api.RegisterProfileRequest) error {
 	if !(1 <= len(req.Login) && len(req.Login) <= 32) {
 		return errors.New("login: length must be in [1; 32]")
 	}
@@ -86,7 +92,7 @@ func (j *jsonExtractor) validateRegisterProfileRequest(req *api.RegisterProfileR
 	return nil
 }
 
-func (j *jsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) error {
+func (j *JsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) error {
 	if !(0 <= len(req.Name) && len(req.Name) <= 32) {
 		return errors.New("name: length must be in [1; 32]")
 	}
@@ -114,17 +120,17 @@ func (j *jsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) 
 	return nil
 }
 
-func (j *jsonExtractor) validateEmail(s string) bool {
+func (j *JsonExtractor) validateEmail(s string) bool {
 	emailRegexp := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 	return emailRegexp.MatchString(s)
 }
 
-func (j *jsonExtractor) validatePhoneNumber(s string) bool {
+func (j *JsonExtractor) validatePhoneNumber(s string) bool {
 	phoneNumberRegexp := regexp.MustCompile(`^\+\d{7,15}$`)
 	return phoneNumberRegexp.MatchString(s)
 }
 
-func (j *jsonExtractor) validateBirthday(s string) bool {
+func (j *JsonExtractor) validateBirthday(s string) bool {
 	b, err := birthday.Parse(s)
 	if err != nil {
 		return false

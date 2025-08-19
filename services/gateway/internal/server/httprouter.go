@@ -3,7 +3,8 @@ package server
 import (
 	"net/http"
 	"soa-socialnetwork/services/gateway/api"
-	"soa-socialnetwork/services/gateway/internal/httperr"
+	"soa-socialnetwork/services/gateway/internal/server/httperr"
+	"soa-socialnetwork/services/gateway/internal/server/jsonextractor"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,20 +25,20 @@ func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequ
 }
 
 func createHandlerWithID[TRequest any, TResponse any](doRequest requestPerformerWithID[TRequest, TResponse]) func(*gin.Context) {
-	ext := jsonExtractor{}
+	ext := jsonextractor.New()
 	return func(ctx *gin.Context) {
 		httpCtx := httpContext{ctx}
 		profileID := httpCtx.Param("id")
 
 		var request TRequest
-		err := ext.extract(&request, httpCtx)
-		if !err.IsOK() {
+		err := ext.Extract(&request, ctx)
+		if !err.IsOk() {
 			httpCtx.submitError(err)
 			return
 		}
 
 		response, err := doRequest(profileID, &request)
-		if !err.IsOK() {
+		if !err.IsOk() {
 			httpCtx.submitError(err)
 			return
 		}
@@ -55,7 +56,7 @@ func createRouter(serviceCtx *gatewayService) httpRouter {
 		},
 	))
 	router.GET("/api/v1/profile/:id", createHandlerWithID(
-		func(id string, r *emptyRequest) (api.GetProfileResponse, httperr.Err) {
+		func(id string, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
 			return serviceCtx.GetProfileInfo(id)
 		},
 	))
@@ -65,7 +66,7 @@ func createRouter(serviceCtx *gatewayService) httpRouter {
 		},
 	))
 	router.DELETE("/api/v1/profile/:id", createHandlerWithID(
-		func(id string, r *emptyRequest) (emptyResponse, httperr.Err) {
+		func(id string, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
 			return emptyResponse{}, serviceCtx.DeleteProfile(id)
 		},
 	))
