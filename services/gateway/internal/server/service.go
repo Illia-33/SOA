@@ -86,9 +86,13 @@ func (c *gatewayService) EditProfileInfo(profileId string, req *api.EditProfileR
 		return httperr.New(http.StatusInternalServerError, err)
 	}
 
-	birthday, err := birthday.Parse(req.Birthday)
-	if err != nil {
-		return httperr.New(http.StatusInternalServerError, errors.New("bad birthday, check validity"))
+	var pbBirthday *timestamppb.Timestamp = nil
+	if len(req.Birthday) > 0 {
+		bday, err := birthday.Parse(req.Birthday)
+		if err != nil {
+			return httperr.New(http.StatusInternalServerError, errors.New("bad birthday, check validity"))
+		}
+		pbBirthday = timestamppb.New(bday.AsTime())
 	}
 
 	_, err = stub.EditProfile(context.Background(), &pb.EditProfileRequest{
@@ -96,7 +100,7 @@ func (c *gatewayService) EditProfileInfo(profileId string, req *api.EditProfileR
 		EditedProfileData: &pb.Profile{
 			Name:     req.Name,
 			Surname:  req.Surname,
-			Birthday: timestamppb.New(birthday.AsTime()),
+			Birthday: pbBirthday,
 			Bio:      req.Bio,
 		},
 	})
