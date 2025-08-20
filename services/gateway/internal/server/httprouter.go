@@ -47,7 +47,7 @@ func createHandlerWithID[TRequest any, TResponse any](doRequest requestPerformer
 	}
 }
 
-func createRouter(serviceCtx *gatewayService) httpRouter {
+func createRouter(serviceCtx *GatewayService) httpRouter {
 	router := gin.Default()
 
 	router.POST("/api/v1/profile", createHandler(
@@ -55,21 +55,29 @@ func createRouter(serviceCtx *gatewayService) httpRouter {
 			return serviceCtx.RegisterProfile(r)
 		},
 	))
+
 	router.GET("/api/v1/profile/:id", createHandlerWithID(
 		func(id string, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
 			return serviceCtx.GetProfileInfo(id)
 		},
 	))
-	router.PUT("/api/v1/profile/:id", createHandlerWithID(
-		func(id string, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
-			return emptyResponse{}, serviceCtx.EditProfileInfo(id, r)
-		},
-	))
-	router.DELETE("/api/v1/profile/:id", createHandlerWithID(
-		func(id string, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
-			return emptyResponse{}, serviceCtx.DeleteProfile(id)
-		},
-	))
+
+	authProfileGroup := router.Group("/api/v1/profile/:id")
+	authProfileGroup.Use(authMiddleware(&serviceCtx.JwtVerifier))
+	{
+		authProfileGroup.PUT("", createHandlerWithID(
+			func(id string, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
+				return emptyResponse{}, serviceCtx.EditProfileInfo(id, r)
+			},
+		))
+
+		authProfileGroup.DELETE("", createHandlerWithID(
+			func(id string, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
+				return emptyResponse{}, serviceCtx.DeleteProfile(id)
+			},
+		))
+	}
+
 	router.POST("/api/v1/auth", createHandler(
 		func(r *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
 			return serviceCtx.Authenticate(r)
