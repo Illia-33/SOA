@@ -48,14 +48,14 @@ func extractJwtPrivateKey() (ed25519.PrivateKey, error) {
 		return priv, nil
 	}
 
-	key := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
+	seed := make([]byte, ed25519.SeedSize)
 
-	_, err = hex.Decode(key, []byte(envPrivateKey))
+	_, err = hex.Decode(seed, []byte(envPrivateKey))
 	if err != nil {
-		return ed25519.PrivateKey{}, errors.New("cannot decode hex encoded jwt private key")
+		return ed25519.PrivateKey{}, errors.New("cannot decode hex encoded jwt private key seed")
 	}
 
-	return key, nil
+	return ed25519.NewKeyFromSeed(seed), nil
 }
 
 func extractServiceConfig() (server.AccountsServiceConfig, error) {
