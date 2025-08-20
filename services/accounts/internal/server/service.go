@@ -2,10 +2,13 @@ package server
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
+	"soa-socialnetwork/services/accounts/internal/server/jwtsigner"
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"github.com/google/uuid"
@@ -15,16 +18,36 @@ import (
 )
 
 type AccountsServiceConfig struct {
-	DbHost     string
-	DbUser     string
-	DbPassword string
-	DbPoolSize int
+	DbHost        string
+	DbUser        string
+	DbPassword    string
+	DbPoolSize    int
+	JwtPrivateKey ed25519.PrivateKey
 }
 
 type AccountsService struct {
 	pb.UnimplementedAccountsServiceServer
 
-	dbpool *pgxpool.Pool
+	dbpool    *pgxpool.Pool
+	jwtSigner jwtsigner.Signer
+}
+
+func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) {
+	connStr := fmt.Sprintf("user=%s password=%s host=%s port=5432 dbname=accounts-postgres sslmode=disable pool_max_conns=%d", cfg.DbUser, cfg.DbPassword, cfg.DbHost, cfg.DbPoolSize)
+	pool, err := pgxpool.New(context.Background(), connStr)
+	if err != nil {
+		return nil, err
+	}
+
+	signer, err := jwtsigner.New(cfg.JwtPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AccountsService{
+		dbpool:    pool,
+		jwtSigner: signer,
+	}, nil
 }
 
 func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
@@ -173,15 +196,27 @@ func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRe
 	return &pb.Empty{}, nil
 }
 
-func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) {
-	connStr := fmt.Sprintf("user=%s password=%s host=%s port=5432 dbname=accounts-postgres sslmode=disable pool_max_conns=%d", cfg.DbUser, cfg.DbPassword, cfg.DbHost, cfg.DbPoolSize)
-	pool, err := pgxpool.New(context.Background(), connStr)
+func (s *AccountsService) Authenticate(ctx context.Context, req *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
+	sql := `
+	SELECT a.id, p.profile_id
+	FROM accounts AS a
+	JOIN profiles AS p ON a.id = p.account_id
+	WHERE a.login = $1 AND a.password = $2;
+	`
 
+	row := s.dbpool.QueryRow(ctx, sql, req.Login, req.Password)
+	var data jwtsigner.PersonalData
+	if err := row.Scan(&data.AccountId, &data.ProfileId); err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	token, err := s.jwtSigner.Sign(data, 30*time.Second)
 	if err != nil {
+		log.Printf("cannot create jwt token: %v", err)
 		return nil, err
 	}
 
-	return &AccountsService{
-		dbpool: pool,
+	return &pb.AuthenticateResponse{
+		Token: token,
 	}, nil
 }

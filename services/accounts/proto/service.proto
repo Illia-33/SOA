@@ -59,9 +59,19 @@ message EditProfileRequest {
     Profile edited_profile_data = 2;
 };
 
+message AuthenticateRequest {
+    string login = 1;
+    string password = 2;
+};
+
+message AuthenticateResponse {
+    string token = 1;
+};
+
 service AccountsService {
     rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
     rpc UnregisterUser (UnregisterUserRequest) returns (Empty);
     rpc GetProfile(GetProfileRequest) returns (Profile);
     rpc EditProfile(EditProfileRequest) returns (Empty);
+    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
 };

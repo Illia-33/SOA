@@ -1,6 +1,10 @@
 package main
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -31,33 +35,66 @@ func extractPort() (int, error) {
 	return num, nil
 }
 
-func extractServiceConfig() (cfg server.AccountsServiceConfig, err error) {
-	cfg.DbHost, err = extractEnv("DB_HOST")
+func extractJwtPrivateKey() (ed25519.PrivateKey, error) {
+	envPrivateKey, err := extractEnv("JWT_ED25519_PRIVATE_KEY")
 	if err != nil {
-		return
+		log.Println("cannot find JWT_ED25519_PRIVATE_KEY environment variable, generating jwt private key...")
+		pub, priv, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return ed25519.PrivateKey{}, err
+		}
+
+		log.Printf("jwt public ed25519 key: %s", hex.EncodeToString(pub))
+		return priv, nil
 	}
 
-	cfg.DbUser, err = extractEnv("DB_USER")
+	key := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
+
+	_, err = hex.Decode(key, []byte(envPrivateKey))
 	if err != nil {
-		return
+		return ed25519.PrivateKey{}, errors.New("cannot decode hex encoded jwt private key")
 	}
 
-	cfg.DbPassword, err = extractEnv("DB_PASSWORD")
+	return key, nil
+}
+
+func extractServiceConfig() (server.AccountsServiceConfig, error) {
+	dbHost, err := extractEnv("DB_HOST")
 	if err != nil {
-		return
+		return server.AccountsServiceConfig{}, err
+	}
+
+	dbUser, err := extractEnv("DB_USER")
+	if err != nil {
+		return server.AccountsServiceConfig{}, err
+	}
+
+	dbPassword, err := extractEnv("DB_PASSWORD")
+	if err != nil {
+		return server.AccountsServiceConfig{}, err
 	}
 
 	dbPoolSizeStr, err := extractEnv("DB_POOL_SIZE")
 	if err != nil {
-		return
+		return server.AccountsServiceConfig{}, err
 	}
 	dbPoolSize, err := strconv.Atoi(dbPoolSizeStr)
 	if err != nil {
-		return
+		return server.AccountsServiceConfig{}, err
 	}
-	cfg.DbPoolSize = dbPoolSize
 
-	return
+	jwtPrivateKey, err := extractJwtPrivateKey()
+	if err != nil {
+		return server.AccountsServiceConfig{}, err
+	}
+
+	return server.AccountsServiceConfig{
+		DbHost:        dbHost,
+		DbUser:        dbUser,
+		DbPassword:    dbPassword,
+		DbPoolSize:    dbPoolSize,
+		JwtPrivateKey: jwtPrivateKey,
+	}, nil
 }
 
 func main() {
