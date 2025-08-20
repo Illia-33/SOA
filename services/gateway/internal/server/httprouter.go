@@ -70,6 +70,11 @@ func createRouter(serviceCtx *gatewayService) httpRouter {
 			return emptyResponse{}, serviceCtx.DeleteProfile(id)
 		},
 	))
+	router.POST("/api/v1/auth", createHandler(
+		func(r *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
+			return serviceCtx.Authenticate(r)
+		},
+	))
 
 	return httpRouter{router}
 }

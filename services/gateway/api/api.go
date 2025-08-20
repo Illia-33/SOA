@@ -28,3 +28,12 @@ type EditProfileRequest struct {
 	PhoneNumber string `json:"phone_number"`
 	Email       string `json:"email"`
 }
+
+type AuthenticateRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+type AuthenticateResponse struct {
+	Token string `json:"token"`
+}

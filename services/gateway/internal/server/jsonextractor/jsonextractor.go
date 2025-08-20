@@ -37,7 +37,7 @@ func (j *JsonExtractor) Extract(r any, ctx *gin.Context) httperr.Err {
 
 func (j *JsonExtractor) bindJSON(r any, ctx *gin.Context) error {
 	switch v := r.(type) {
-	case *api.RegisterProfileRequest, *api.EditProfileRequest:
+	case *api.RegisterProfileRequest, *api.EditProfileRequest, *api.AuthenticateRequest:
 		return ctx.BindJSON(v)
 
 	case *EmptyRequest:
@@ -55,6 +55,9 @@ func (j *JsonExtractor) validateRequest(r any) error {
 
 	case *api.EditProfileRequest:
 		return j.validateEditProfileRequest(v)
+
+	case *api.AuthenticateRequest:
+		return j.validateAuthenticateRequest(v)
 
 	case *EmptyRequest:
 		return nil
@@ -115,6 +118,18 @@ func (j *JsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) 
 
 	if len(req.Email) > 0 && !j.validateEmail(req.Email) {
 		return errors.New("email: invalid")
+	}
+
+	return nil
+}
+
+func (j *JsonExtractor) validateAuthenticateRequest(req *api.AuthenticateRequest) error {
+	if !(1 <= len(req.Login) && len(req.Login) <= 32) {
+		return errors.New("login: length must be in [1; 32]")
+	}
+
+	if !(6 <= len(req.Password) && len(req.Password) <= 32) {
+		return errors.New("password: length must be in [6; 32]")
 	}
 
 	return nil
