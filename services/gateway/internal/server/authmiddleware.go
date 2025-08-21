@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"soa-socialnetwork/internal/soajwt"
@@ -14,7 +13,6 @@ func authMiddleware(verifier *soajwt.Verifier) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		auth := ctx.Request.Header.Get("Authorization")
 		authRegex := regexp.MustCompile(`^Bearer [\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}$`)
-		log.Printf("suka: %s", auth)
 		if !authRegex.MatchString(auth) {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, "broken jwt token")
 			return
