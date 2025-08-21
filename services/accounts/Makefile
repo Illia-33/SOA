@@ -8,7 +8,7 @@ proto:
 	--go-grpc_out=$(PWD)/proto
 
 .PHONY: build
-build: proto
+build:
 	go build -o $(PWD)/accounts-service $(PWD)/cmd
 
 .PHONY: run
