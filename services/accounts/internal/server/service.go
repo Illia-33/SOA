@@ -8,6 +8,7 @@ import (
 	"log"
 	"time"
 
+	"soa-socialnetwork/internal/soajwt"
 	"soa-socialnetwork/services/accounts/internal/server/jwtsigner"
 	pb "soa-socialnetwork/services/accounts/proto"
 
@@ -28,8 +29,9 @@ type AccountsServiceConfig struct {
 type AccountsService struct {
 	pb.UnimplementedAccountsServiceServer
 
-	dbpool    *pgxpool.Pool
-	jwtSigner jwtsigner.Signer
+	dbpool      *pgxpool.Pool
+	jwtSigner   jwtsigner.Signer
+	jwtVerifier soajwt.Verifier
 }
 
 func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) {
@@ -44,9 +46,12 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 		return nil, err
 	}
 
+	pubkey := cfg.JwtPrivateKey.Public().(ed25519.PublicKey)
+
 	return &AccountsService{
-		dbpool:    pool,
-		jwtSigner: signer,
+		dbpool:      pool,
+		jwtSigner:   signer,
+		jwtVerifier: soajwt.NewVerifier(pubkey),
 	}, nil
 }
 

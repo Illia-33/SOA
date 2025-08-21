@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"soa-socialnetwork/services/accounts/internal/server/interceptors"
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"google.golang.org/grpc"
@@ -20,8 +21,12 @@ func Create(port int, cfg AccountsServiceConfig) (*Server, error) {
 		return nil, err
 	}
 
-	grpcServer := grpc.NewServer()
 	service, err := createAccountsService(cfg)
+
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(interceptors.Auth(&service.jwtVerifier)),
+	)
+
 	if err != nil {
 		return nil, err
 	}
