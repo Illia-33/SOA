@@ -1,4 +1,4 @@
-package jwtsigner
+package soajwtsigner
 
 import (
 	"crypto/ed25519"

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"soa-socialnetwork/internal/soajwt"
-	"soa-socialnetwork/services/accounts/internal/server/jwtsigner"
+	"soa-socialnetwork/services/accounts/internal/server/soajwtsigner"
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"github.com/google/uuid"
@@ -30,7 +30,7 @@ type AccountsService struct {
 	pb.UnimplementedAccountsServiceServer
 
 	dbpool      *pgxpool.Pool
-	jwtSigner   jwtsigner.Signer
+	jwtSigner   soajwtsigner.Signer
 	jwtVerifier soajwt.Verifier
 }
 
@@ -41,7 +41,7 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 		return nil, err
 	}
 
-	signer, err := jwtsigner.New(cfg.JwtPrivateKey)
+	signer, err := soajwtsigner.New(cfg.JwtPrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (s *AccountsService) Authenticate(ctx context.Context, req *pb.Authenticate
 	`
 
 	row := s.dbpool.QueryRow(ctx, sql, req.Login, req.Password)
-	var data jwtsigner.PersonalData
+	var data soajwtsigner.PersonalData
 	if err := row.Scan(&data.AccountId, &data.ProfileId); err != nil {
 		return nil, errors.New("user not found")
 	}
