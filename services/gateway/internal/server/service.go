@@ -11,8 +11,6 @@ import (
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/query"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -26,17 +24,17 @@ func initService(cfg GatewayServiceConfig) GatewayService {
 	}
 }
 
-func (c *GatewayService) createAccountsServiceStub() (pb.AccountsServiceClient, error) {
-	conn, err := grpc.NewClient("accounts-service:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+func (c *GatewayService) createAccountsServiceStub(qp *query.Params) (pb.AccountsServiceClient, error) {
+	client, err := createGrpcClient("accounts-service:50051", qp)
 	if err != nil {
 		return nil, err
 	}
 
-	return pb.NewAccountsServiceClient(conn), nil
+	return pb.NewAccountsServiceClient(client), nil
 }
 
 func (c *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
-	stub, err := c.createAccountsServiceStub()
+	stub, err := c.createAccountsServiceStub(qp)
 	if err != nil {
 		return api.RegisterProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
@@ -59,7 +57,7 @@ func (c *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProf
 }
 
 func (c *GatewayService) GetProfileInfo(qp *query.Params) (api.GetProfileResponse, httperr.Err) {
-	stub, err := c.createAccountsServiceStub()
+	stub, err := c.createAccountsServiceStub(qp)
 	if err != nil {
 		return api.GetProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
@@ -80,7 +78,7 @@ func (c *GatewayService) GetProfileInfo(qp *query.Params) (api.GetProfileRespons
 }
 
 func (c *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileRequest) httperr.Err {
-	stub, err := c.createAccountsServiceStub()
+	stub, err := c.createAccountsServiceStub(qp)
 	if err != nil {
 		return httperr.New(http.StatusInternalServerError, err)
 	}
@@ -111,7 +109,7 @@ func (c *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileR
 }
 
 func (c *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
-	stub, err := c.createAccountsServiceStub()
+	stub, err := c.createAccountsServiceStub(qp)
 	if err != nil {
 		return httperr.New(http.StatusInternalServerError, err)
 	}
@@ -127,7 +125,7 @@ func (c *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
 }
 
 func (c *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
-	stub, err := c.createAccountsServiceStub()
+	stub, err := c.createAccountsServiceStub(qp)
 	if err != nil {
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}

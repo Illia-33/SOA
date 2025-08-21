@@ -32,6 +32,6 @@ func WithJwtAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 		}
 
 		params := ExtractParams(ctx)
-		params.RawAuthToken = rawToken
+		params.RawJwtToken = rawToken
 	}
 }
