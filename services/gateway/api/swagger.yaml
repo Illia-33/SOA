@@ -89,6 +89,23 @@ paths:
           description: User doesn't have rights to delete profile
         "404":
           description: Cannot find profile with specified ID
+  /api/v1/auth:
+    post:
+      summary: Receive a new auth token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthenticateRequest"
+      responses:
+        "200":
+          description: A new auth token has been generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthenticateResponse"
+        "401":
+          description: Authentication failed
 components:
   schemas:
     RegisterProfileRequest:
@@ -159,3 +176,22 @@ components:
         email:
           type: string
           format: email
+    AuthenticateRequest:
+      properties:
+        login:
+          type: string
+          minLength: 1
+          maxLength: 32
+        email:
+          type: string
+          format: email
+        phone_number:
+          type: string
+        password:
+          type: string
+          minLength: 6
+          maxLength: 32
+    AuthenticateResponse:
+      properties:
+        token:
+          type: string
