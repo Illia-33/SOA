@@ -9,6 +9,7 @@ import (
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/birthday"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
+	"soa-socialnetwork/services/gateway/internal/server/query"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -34,7 +35,7 @@ func (c *GatewayService) createAccountsServiceStub() (pb.AccountsServiceClient, 
 	return pb.NewAccountsServiceClient(conn), nil
 }
 
-func (c *GatewayService) RegisterProfile(req *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
+func (c *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
 	stub, err := c.createAccountsServiceStub()
 	if err != nil {
 		return api.RegisterProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
@@ -57,14 +58,14 @@ func (c *GatewayService) RegisterProfile(req *api.RegisterProfileRequest) (api.R
 	}, httperr.Ok()
 }
 
-func (c *GatewayService) GetProfileInfo(profileId string) (api.GetProfileResponse, httperr.Err) {
+func (c *GatewayService) GetProfileInfo(qp *query.Params) (api.GetProfileResponse, httperr.Err) {
 	stub, err := c.createAccountsServiceStub()
 	if err != nil {
 		return api.GetProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
 	resp, err := stub.GetProfile(context.Background(), &pb.GetProfileRequest{
-		ProfileId: profileId,
+		ProfileId: qp.ProfileId,
 	})
 	if err != nil {
 		return api.GetProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
@@ -78,7 +79,7 @@ func (c *GatewayService) GetProfileInfo(profileId string) (api.GetProfileRespons
 	}, httperr.Ok()
 }
 
-func (c *GatewayService) EditProfileInfo(profileId string, req *api.EditProfileRequest) httperr.Err {
+func (c *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileRequest) httperr.Err {
 	stub, err := c.createAccountsServiceStub()
 	if err != nil {
 		return httperr.New(http.StatusInternalServerError, err)
@@ -94,7 +95,7 @@ func (c *GatewayService) EditProfileInfo(profileId string, req *api.EditProfileR
 	}
 
 	_, err = stub.EditProfile(context.Background(), &pb.EditProfileRequest{
-		ProfileId: profileId,
+		ProfileId: qp.ProfileId,
 		EditedProfileData: &pb.Profile{
 			Name:     req.Name,
 			Surname:  req.Surname,
@@ -109,14 +110,14 @@ func (c *GatewayService) EditProfileInfo(profileId string, req *api.EditProfileR
 	return httperr.Ok()
 }
 
-func (c *GatewayService) DeleteProfile(profileId string) httperr.Err {
+func (c *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
 	stub, err := c.createAccountsServiceStub()
 	if err != nil {
 		return httperr.New(http.StatusInternalServerError, err)
 	}
 
 	_, err = stub.UnregisterUser(context.Background(), &pb.UnregisterUserRequest{
-		ProfileId: profileId,
+		ProfileId: qp.ProfileId,
 	})
 	if err != nil {
 		return httperr.New(http.StatusInternalServerError, err)
@@ -125,7 +126,7 @@ func (c *GatewayService) DeleteProfile(profileId string) httperr.Err {
 	return httperr.Ok()
 }
 
-func (c *GatewayService) Authenticate(req *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
+func (c *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
 	stub, err := c.createAccountsServiceStub()
 	if err != nil {
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)

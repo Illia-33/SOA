@@ -1,4 +1,4 @@
-package server
+package query
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func authMiddleware(verifier *soajwt.Verifier) gin.HandlerFunc {
+func WithJwtAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		auth := ctx.Request.Header.Get("Authorization")
 		authRegex := regexp.MustCompile(`^Bearer [\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}$`)
@@ -25,10 +25,13 @@ func authMiddleware(verifier *soajwt.Verifier) gin.HandlerFunc {
 			return
 		}
 
-		id := ctx.Param("id")
-		if len(id) > 0 && token.Subject != id {
+		profileId := ctx.Param("profile_id")
+		if len(profileId) > 0 && token.Subject != profileId {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, "not enough rights")
 			return
 		}
+
+		params := ExtractParams(ctx)
+		params.RawAuthToken = rawToken
 	}
 }

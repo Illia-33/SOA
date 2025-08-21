@@ -5,6 +5,7 @@ import (
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/jsonextractor"
+	"soa-socialnetwork/services/gateway/internal/server/query"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,74 +14,70 @@ type httpRouter struct {
 	*gin.Engine
 }
 
-type requestPerformer[TRequest any, TResponse any] func(*TRequest) (TResponse, httperr.Err)
-type requestPerformerWithID[TRequest any, TResponse any] func(string, *TRequest) (TResponse, httperr.Err)
+type requestPerformer[TRequest any, TResponse any] func(*query.Params, *TRequest) (TResponse, httperr.Err)
 
 type emptyResponse struct{}
 
 func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequest, TResponse]) func(*gin.Context) {
-	return createHandlerWithID(func(id string, r *TRequest) (TResponse, httperr.Err) {
-		return doRequest(r)
-	})
-}
-
-func createHandlerWithID[TRequest any, TResponse any](doRequest requestPerformerWithID[TRequest, TResponse]) func(*gin.Context) {
-	ext := jsonextractor.New()
+	extractor := jsonextractor.New()
 	return func(ctx *gin.Context) {
-		httpCtx := httpContext{ctx}
-		profileID := httpCtx.Param("id")
-
+		params := query.ExtractParams(ctx)
 		var request TRequest
-		err := ext.Extract(&request, ctx)
+		err := extractor.Extract(&request, ctx)
+
 		if !err.IsOk() {
-			httpCtx.submitError(err)
+			ctx.AbortWithError(err.StatusCode, err.Err)
 			return
 		}
 
-		response, err := doRequest(profileID, &request)
+		response, err := doRequest(params, &request)
 		if !err.IsOk() {
-			httpCtx.submitError(err)
+			ctx.AbortWithError(err.StatusCode, err.Err)
 			return
 		}
 
-		httpCtx.JSON(http.StatusOK, response)
+		ctx.JSON(http.StatusOK, response)
 	}
 }
 
 func createRouter(serviceCtx *GatewayService) httpRouter {
 	router := gin.Default()
+	restApi := router.Group("/api/v1")
 
-	router.POST("/api/v1/profile", createHandler(
-		func(r *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
-			return serviceCtx.RegisterProfile(r)
-		},
-	))
-
-	router.GET("/api/v1/profile/:id", createHandlerWithID(
-		func(id string, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
-			return serviceCtx.GetProfileInfo(id)
-		},
-	))
-
-	authProfileGroup := router.Group("/api/v1/profile/:id")
-	authProfileGroup.Use(authMiddleware(&serviceCtx.JwtVerifier))
+	profileGroup := restApi.Group("/profile")
 	{
-		authProfileGroup.PUT("", createHandlerWithID(
-			func(id string, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, serviceCtx.EditProfileInfo(id, r)
+		profileGroup.POST("", createHandler(
+			func(qp *query.Params, r *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
+				return serviceCtx.RegisterProfile(qp, r)
 			},
 		))
 
-		authProfileGroup.DELETE("", createHandlerWithID(
-			func(id string, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, serviceCtx.DeleteProfile(id)
+		idGroup := profileGroup.Group("/:profile_id")
+		idGroup.Use(query.WithProfileID())
+		idGroup.GET("", createHandler(
+			func(qp *query.Params, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
+				return serviceCtx.GetProfileInfo(qp)
+			},
+		))
+
+		idAuthGroup := idGroup.Group("")
+		idAuthGroup.Use(query.WithJwtAuth(&serviceCtx.JwtVerifier))
+		idAuthGroup.PUT("", createHandler(
+			func(qp *query.Params, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
+				return emptyResponse{}, serviceCtx.EditProfileInfo(qp, r)
+			},
+		))
+
+		idAuthGroup.DELETE("", createHandler(
+			func(qp *query.Params, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
+				return emptyResponse{}, serviceCtx.DeleteProfile(qp)
 			},
 		))
 	}
 
-	router.POST("/api/v1/auth", createHandler(
-		func(r *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
-			return serviceCtx.Authenticate(r)
+	restApi.POST("/auth", createHandler(
+		func(qp *query.Params, r *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
+			return serviceCtx.Authenticate(qp, r)
 		},
 	))
 
