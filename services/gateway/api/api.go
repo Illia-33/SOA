@@ -30,8 +30,10 @@ type EditProfileRequest struct {
 }
 
 type AuthenticateRequest struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
+	Login       string `json:"login"`
+	Email       string `json:"email"`
+	PhoneNumber string `json:"phone_number"`
+	Password    string `json:"password"`
 }
 
 type AuthenticateResponse struct {

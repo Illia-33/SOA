@@ -130,10 +130,27 @@ func (c *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateReq
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
-	resp, err := stub.Authenticate(context.Background(), &pb.AuthenticateRequest{
-		Login:    req.Login,
-		Password: req.Password,
-	})
+	var grpcRequest pb.AuthenticateRequest
+	{
+		if len(req.Login) > 0 {
+			grpcRequest.UserId = &pb.AuthenticateRequest_Login{
+				Login: req.Login,
+			}
+		} else if len(req.Email) > 0 {
+			grpcRequest.UserId = &pb.AuthenticateRequest_Email{
+				Email: req.Email,
+			}
+		} else if len(req.PhoneNumber) > 0 {
+			grpcRequest.UserId = &pb.AuthenticateRequest_PhoneNumber{
+				PhoneNumber: req.PhoneNumber,
+			}
+		} else {
+			panic("shouldn't reach here")
+		}
+	}
+	grpcRequest.Password = req.Password
+
+	resp, err := stub.Authenticate(context.Background(), &grpcRequest)
 
 	if err != nil {
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)

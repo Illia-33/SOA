@@ -202,17 +202,41 @@ func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRe
 }
 
 func (s *AccountsService) Authenticate(ctx context.Context, req *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	sql := `
-	SELECT a.id, p.profile_id
+	column, userId := func() (string, string) {
+		switch v := req.UserId.(type) {
+		case *pb.AuthenticateRequest_Login:
+			{
+				return "login", v.Login
+			}
+		case *pb.AuthenticateRequest_Email:
+			{
+				return "email", v.Email
+			}
+		case *pb.AuthenticateRequest_PhoneNumber:
+			{
+				return "phone_number", v.PhoneNumber
+			}
+		}
+
+		panic("shouldn't reach here")
+	}()
+
+	sql := fmt.Sprintf(`
+	SELECT a.id, p.profile_id, a.password
 	FROM accounts AS a
 	JOIN profiles AS p ON a.id = p.account_id
-	WHERE a.login = $1 AND a.password = $2;
-	`
+	WHERE a.%s = $1;
+	`, column)
 
-	row := s.dbpool.QueryRow(ctx, sql, req.Login, req.Password)
+	row := s.dbpool.QueryRow(ctx, sql, userId)
 	var data soajwtsigner.PersonalData
-	if err := row.Scan(&data.AccountId, &data.ProfileId); err != nil {
+	var password string
+	if err := row.Scan(&data.AccountId, &data.ProfileId, &password); err != nil {
 		return nil, errors.New("user not found")
+	}
+
+	if password != req.Password {
+		return nil, errors.New("passwords doesn't match")
 	}
 
 	token, err := s.jwtSigner.Sign(data, 30*time.Second)

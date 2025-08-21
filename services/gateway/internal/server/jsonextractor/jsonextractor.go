@@ -124,8 +124,27 @@ func (j *JsonExtractor) validateEditProfileRequest(req *api.EditProfileRequest) 
 }
 
 func (j *JsonExtractor) validateAuthenticateRequest(req *api.AuthenticateRequest) error {
-	if !(1 <= len(req.Login) && len(req.Login) <= 32) {
+	if len(req.Login) == 0 && len(req.Email) == 0 && len(req.PhoneNumber) == 0 {
+		return errors.New("no userid")
+	}
+
+	// checking that exactly one user id has been passed
+	if len(req.Login) > 0 && (len(req.Email) > 0 || len(req.PhoneNumber) > 0) {
+		return errors.New("too much userid")
+	}
+	if len(req.Email) > 0 && len(req.PhoneNumber) > 0 {
+		return errors.New("too much userid")
+	}
+
+	// check validity of passed user id
+	if !(0 <= len(req.Login) && len(req.Login) <= 32) {
 		return errors.New("login: length must be in [1; 32]")
+	}
+	if len(req.PhoneNumber) > 0 && !j.validatePhoneNumber(req.PhoneNumber) {
+		return errors.New("phone number: must be in format +0123456789")
+	}
+	if len(req.Email) > 0 && !j.validateEmail(req.Email) {
+		return errors.New("email: invalid")
 	}
 
 	if !(6 <= len(req.Password) && len(req.Password) <= 32) {

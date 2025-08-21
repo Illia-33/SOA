@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package generated;
+package proto;
 
 option go_package=".";
 
@@ -60,8 +60,12 @@ message EditProfileRequest {
 };
 
 message AuthenticateRequest {
-    string login = 1;
-    string password = 2;
+    oneof user_id {
+        string login = 1;
+        string email = 2;
+        string phone_number = 3;
+    }
+    string password = 4;
 };
 
 message AuthenticateResponse {
