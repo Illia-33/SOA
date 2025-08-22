@@ -3,7 +3,8 @@ package interceptors
 import (
 	"context"
 	"errors"
-	"soa-socialnetwork/internal/soajwt"
+	"soa-socialnetwork/services/accounts/pkg/soajwt"
+	"soa-socialnetwork/services/accounts/pkg/soatoken"
 	"strings"
 
 	pb "soa-socialnetwork/services/accounts/proto"
@@ -12,9 +13,11 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func Auth(verifier *soajwt.Verifier) grpc.UnaryServerInterceptor {
+// TODO refactor it
+
+func Auth(jwtVerifier *soajwt.Verifier, soaVerifier soatoken.Verifier) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-		if !(strings.HasSuffix(info.FullMethod, "EditProfile") || strings.HasSuffix(info.FullMethod, "UnregisterUser")) {
+		if !(info.FullMethod == pb.AccountsService_EditProfile_FullMethodName || info.FullMethod == pb.AccountsService_UnregisterUser_FullMethodName) {
 			return handler(ctx, req)
 		}
 
@@ -24,11 +27,20 @@ func Auth(verifier *soajwt.Verifier) grpc.UnaryServerInterceptor {
 		}
 
 		auth := md["authorization"]
-		if len(auth) == 0 || len(auth[0]) == 0 {
+		if len(auth) == 0 {
 			return nil, errors.New("auth token is not found")
 		}
 
-		rawToken := auth[0]
+		split := strings.Split(auth[0], " ")
+		if len(split) != 2 {
+			return nil, errors.New("bad token")
+		}
+
+		authKind, authToken := split[0], split[1]
+
+		if !(authKind == "Bearer" || authKind == "SoaToken") {
+			return nil, errors.New("unknown auth kind")
+		}
 
 		profileId := func() string {
 			switch v := req.(type) {
@@ -46,15 +58,41 @@ func Auth(verifier *soajwt.Verifier) grpc.UnaryServerInterceptor {
 			panic("shouldn't reach here")
 		}()
 
-		token, err := verifier.Verify(rawToken)
-		if err != nil {
-			return nil, err
+		if authKind == "Bearer" {
+			token, err := jwtVerifier.Verify(authToken)
+			if err != nil {
+				return nil, err
+			}
+
+			if token.Subject != profileId {
+				return nil, errors.New("access denied")
+			}
+
+			return handler(ctx, req)
 		}
 
-		if token.Subject != profileId {
-			return nil, errors.New("access denied")
+		if authKind == "SoaToken" {
+			token, err := soatoken.Parse(authToken)
+			if err != nil {
+				return nil, err
+			}
+
+			if token.ProfileID.String() != profileId {
+				return nil, errors.New("access denied")
+			}
+
+			err = soaVerifier.Verify(authToken, soatoken.RightsRequirements{
+				Read:  false,
+				Write: true,
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
+			return handler(ctx, req)
 		}
 
-		return handler(ctx, req)
+		panic("shouldn't reach here")
 	}
 }

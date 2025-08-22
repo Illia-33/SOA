@@ -4,7 +4,7 @@ import (
 	"crypto/ed25519"
 	"time"
 
-	"soa-socialnetwork/internal/soajwt"
+	"soa-socialnetwork/services/accounts/pkg/soajwt"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

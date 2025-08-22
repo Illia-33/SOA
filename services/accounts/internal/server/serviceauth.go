@@ -223,7 +223,9 @@ func (s *AccountsService) ValidateApiToken(ctx context.Context, req *pb.ApiToken
 	now := time.Now()
 	if now.After(validUntil) {
 		return &pb.ApiTokenValidity{
-			Result: &pb.ApiTokenValidity_Invalid_{},
+			Result: &pb.ApiTokenValidity_Invalid_{
+				Invalid: &pb.ApiTokenValidity_Invalid{},
+			},
 		}, nil
 	}
 

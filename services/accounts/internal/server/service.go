@@ -5,8 +5,8 @@ import (
 	"crypto/ed25519"
 	"fmt"
 
-	"soa-socialnetwork/internal/soajwt"
 	"soa-socialnetwork/services/accounts/internal/server/soajwtissuer"
+	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,6 +26,7 @@ type AccountsService struct {
 	dbPool      *pgxpool.Pool
 	jwtIssuer   soajwtissuer.Issuer
 	jwtVerifier soajwt.Verifier
+	soaVerifier serviceSoaTokenVerifier
 }
 
 func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) {
@@ -41,10 +42,12 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 	}
 
 	pubkey := cfg.JwtPrivateKey.Public().(ed25519.PublicKey)
-
-	return &AccountsService{
+	service := &AccountsService{
 		dbPool:      pool,
 		jwtIssuer:   jwtIssuer,
 		jwtVerifier: soajwt.NewVerifier(pubkey),
-	}, nil
+	}
+	service.soaVerifier = serviceSoaTokenVerifier{service: service}
+
+	return service, nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"soa-socialnetwork/internal/soajwt"
+	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	pb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/birthday"

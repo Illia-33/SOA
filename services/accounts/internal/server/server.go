@@ -24,7 +24,7 @@ func Create(port int, cfg AccountsServiceConfig) (*Server, error) {
 	service, err := createAccountsService(cfg)
 
 	grpcServer := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(interceptors.Auth(&service.jwtVerifier)),
+		grpc.ChainUnaryInterceptor(interceptors.Auth(&service.jwtVerifier, &service.soaVerifier)),
 	)
 
 	if err != nil {
