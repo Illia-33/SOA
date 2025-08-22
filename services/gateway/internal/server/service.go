@@ -10,7 +10,9 @@ import (
 	"soa-socialnetwork/services/gateway/internal/server/birthday"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/query"
+	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -124,39 +126,71 @@ func (c *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
 	return httperr.Ok()
 }
 
+func (c *GatewayService) buildAuthByPassword(req *api.AuthenticateRequest) (proto pb.AuthByPassword) {
+	if len(req.Login) > 0 {
+		proto.UserId = &pb.AuthByPassword_Login{
+			Login: req.Login,
+		}
+	} else if len(req.Email) > 0 {
+		proto.UserId = &pb.AuthByPassword_Email{
+			Email: req.Email,
+		}
+	} else if len(req.PhoneNumber) > 0 {
+		proto.UserId = &pb.AuthByPassword_PhoneNumber{
+			PhoneNumber: req.PhoneNumber,
+		}
+	} else {
+		panic("shouldn't reach here")
+	}
+
+	proto.Password = req.Password
+	return
+}
+
 func (c *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
 	stub, err := c.createAccountsServiceStub(qp)
 	if err != nil {
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
-	var grpcRequest pb.AuthByPassword
-	{
-		if len(req.Login) > 0 {
-			grpcRequest.UserId = &pb.AuthByPassword_Login{
-				Login: req.Login,
-			}
-		} else if len(req.Email) > 0 {
-			grpcRequest.UserId = &pb.AuthByPassword_Email{
-				Email: req.Email,
-			}
-		} else if len(req.PhoneNumber) > 0 {
-			grpcRequest.UserId = &pb.AuthByPassword_PhoneNumber{
-				PhoneNumber: req.PhoneNumber,
-			}
-		} else {
-			panic("shouldn't reach here")
-		}
-	}
-	grpcRequest.Password = req.Password
-
-	resp, err := stub.Authenticate(context.Background(), &grpcRequest)
+	protoRequest := c.buildAuthByPassword(req)
+	resp, err := stub.Authenticate(context.Background(), &protoRequest)
 
 	if err != nil {
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
 	return api.AuthenticateResponse{
+		Token: resp.Token,
+	}, httperr.Ok()
+}
+
+func (c *GatewayService) CreateApiToken(qp *query.Params, req *api.CreateApiTokenRequest) (api.CreateApiTokenResponse, httperr.Err) {
+	stub, err := c.createAccountsServiceStub(qp)
+	if err != nil {
+		return api.CreateApiTokenResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	protoAuthByPassword := c.buildAuthByPassword(&req.Auth)
+	ttl, err := time.ParseDuration(req.Ttl)
+	if err != nil {
+		panic("bad duration verification")
+	}
+
+	resp, err := stub.CreateApiToken(context.Background(), &pb.CreateApiTokenRequest{
+		Auth: &protoAuthByPassword,
+		Params: &pb.AuthTokenParams{
+			ReadAccess:  req.ReadAccess,
+			WriteAccess: req.WriteAccess,
+			Ttl:         durationpb.New(ttl),
+		},
+	})
+
+	if err != nil {
+		return api.CreateApiTokenResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	return api.CreateApiTokenResponse{
 		Token: resp.Token,
 	}, httperr.Ok()
 }

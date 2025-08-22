@@ -8,6 +8,7 @@ import (
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/birthday"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,7 +38,7 @@ func (j *JsonExtractor) Extract(r any, ctx *gin.Context) httperr.Err {
 
 func (j *JsonExtractor) bindJSON(r any, ctx *gin.Context) error {
 	switch v := r.(type) {
-	case *api.RegisterProfileRequest, *api.EditProfileRequest, *api.AuthenticateRequest:
+	case *api.RegisterProfileRequest, *api.EditProfileRequest, *api.AuthenticateRequest, *api.CreateApiTokenRequest:
 		return ctx.BindJSON(v)
 
 	case *EmptyRequest:
@@ -58,6 +59,9 @@ func (j *JsonExtractor) validateRequest(r any) error {
 
 	case *api.AuthenticateRequest:
 		return j.validateAuthenticateRequest(v)
+
+	case *api.CreateApiTokenRequest:
+		return j.validateCreateApiTokenRequest(v)
 
 	case *EmptyRequest:
 		return nil
@@ -149,6 +153,23 @@ func (j *JsonExtractor) validateAuthenticateRequest(req *api.AuthenticateRequest
 
 	if !(6 <= len(req.Password) && len(req.Password) <= 32) {
 		return errors.New("password: length must be in [6; 32]")
+	}
+
+	return nil
+}
+
+func (j *JsonExtractor) validateCreateApiTokenRequest(req *api.CreateApiTokenRequest) error {
+	if err := j.validateAuthenticateRequest(&req.Auth); err != nil {
+		return err
+	}
+
+	d, err := time.ParseDuration(req.Ttl)
+	if d.Nanoseconds() < 0 {
+		return errors.New("ttl: must be > 0")
+	}
+
+	if err != nil {
+		return errors.New("ttl: invalid")
 	}
 
 	return nil

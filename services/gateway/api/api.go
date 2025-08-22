@@ -39,3 +39,14 @@ type AuthenticateRequest struct {
 type AuthenticateResponse struct {
 	Token string `json:"token"`
 }
+
+type CreateApiTokenRequest struct {
+	Auth        AuthenticateRequest `json:"auth"`
+	ReadAccess  bool                `json:"read_access"`
+	WriteAccess bool                `json:"write_access"`
+	Ttl         string              `json:"ttl"`
+}
+
+type CreateApiTokenResponse struct {
+	Token string `json:"token"`
+}

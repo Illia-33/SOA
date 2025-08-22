@@ -81,5 +81,11 @@ func createRouter(serviceCtx *GatewayService) httpRouter {
 		},
 	))
 
+	restApi.POST("/api_token", createHandler(
+		func(qp *query.Params, r *api.CreateApiTokenRequest) (api.CreateApiTokenResponse, httperr.Err) {
+			return serviceCtx.CreateApiToken(qp, r)
+		},
+	))
+
 	return httpRouter{router}
 }
