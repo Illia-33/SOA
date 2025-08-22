@@ -13,83 +13,124 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// TODO refactor it
+func needAuth(methodName string) bool {
+	return methodName == pb.AccountsService_EditProfile_FullMethodName || methodName == pb.AccountsService_UnregisterUser_FullMethodName
+}
+
+type parsedToken struct {
+	kind  string
+	value string
+}
+
+func parseTokenFromMetadata(md metadata.MD) (parsedToken, error) {
+	auth := md["authorization"]
+	if len(auth) == 0 {
+		return parsedToken{}, errors.New("auth token is not found")
+	}
+
+	split := strings.Split(auth[0], " ")
+	if len(split) != 2 {
+		return parsedToken{}, errors.New("bad token")
+	}
+
+	authKind, authToken := split[0], split[1]
+	if !(authKind == "Bearer" || authKind == "SoaToken") {
+		return parsedToken{}, errors.New("unknown auth kind")
+	}
+
+	return parsedToken{
+		kind:  authKind,
+		value: authToken,
+	}, nil
+}
+
+func fetchProfileIdFromRequest(request any) string {
+	switch v := request.(type) {
+	case *pb.EditProfileRequest:
+		{
+			return v.ProfileId
+		}
+
+	case *pb.UnregisterUserRequest:
+		{
+			return v.ProfileId
+		}
+	}
+
+	panic("shouldn't reach here")
+}
+
+func verifyJwtToken(tokenStr string, verifier *soajwt.Verifier, requestProfileId string) error {
+	token, err := verifier.Verify(tokenStr)
+	if err != nil {
+		return err
+	}
+
+	if token.Subject != requestProfileId {
+		return errors.New("access denied")
+	}
+
+	return nil
+}
+
+func verifySoaToken(tokenStr string, verifier soatoken.Verifier, requestProfileId string, req soatoken.RightsRequirements) error {
+	token, err := soatoken.Parse(tokenStr)
+	if err != nil {
+		return err
+	}
+
+	if token.ProfileID.String() != requestProfileId {
+		return errors.New("access denied")
+	}
+
+	return verifier.Verify(tokenStr, req)
+}
+
+func getSoaTokenRightsRequirements(methodName string) soatoken.RightsRequirements {
+	switch methodName {
+	case pb.AccountsService_EditProfile_FullMethodName, pb.AccountsService_UnregisterUser_FullMethodName:
+		{
+			return soatoken.RightsRequirements{
+				Read:  false,
+				Write: true,
+			}
+		}
+	}
+
+	return soatoken.RightsRequirements{}
+}
 
 func Auth(jwtVerifier *soajwt.Verifier, soaVerifier soatoken.Verifier) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-		if !(info.FullMethod == pb.AccountsService_EditProfile_FullMethodName || info.FullMethod == pb.AccountsService_UnregisterUser_FullMethodName) {
+		if !needAuth(info.FullMethod) {
 			return handler(ctx, req)
 		}
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
-			return nil, errors.New("metatada is not found")
+			return nil, errors.New("metatada not found")
 		}
 
-		auth := md["authorization"]
-		if len(auth) == 0 {
-			return nil, errors.New("auth token is not found")
+		parsedToken, err := parseTokenFromMetadata(md)
+		if err != nil {
+			return nil, err
 		}
 
-		split := strings.Split(auth[0], " ")
-		if len(split) != 2 {
-			return nil, errors.New("bad token")
-		}
+		profileId := fetchProfileIdFromRequest(req)
 
-		authKind, authToken := split[0], split[1]
-
-		if !(authKind == "Bearer" || authKind == "SoaToken") {
-			return nil, errors.New("unknown auth kind")
-		}
-
-		profileId := func() string {
-			switch v := req.(type) {
-			case *pb.EditProfileRequest:
-				{
-					return v.ProfileId
-				}
-
-			case *pb.UnregisterUserRequest:
-				{
-					return v.ProfileId
-				}
-			}
-
-			panic("shouldn't reach here")
-		}()
-
-		if authKind == "Bearer" {
-			token, err := jwtVerifier.Verify(authToken)
+		if parsedToken.kind == "Bearer" {
+			err := verifyJwtToken(parsedToken.value, jwtVerifier, profileId)
 			if err != nil {
 				return nil, err
 			}
-
-			if token.Subject != profileId {
-				return nil, errors.New("access denied")
-			}
-
 			return handler(ctx, req)
 		}
 
-		if authKind == "SoaToken" {
-			token, err := soatoken.Parse(authToken)
+		if parsedToken.kind == "SoaToken" {
+			err := verifySoaToken(parsedToken.value, soaVerifier, profileId, getSoaTokenRightsRequirements(info.FullMethod))
 			if err != nil {
 				return nil, err
 			}
-
-			if token.ProfileID.String() != profileId {
-				return nil, errors.New("access denied")
-			}
-
-			err = soaVerifier.Verify(authToken, soatoken.RightsRequirements{
-				Read:  false,
-				Write: true,
-			})
-
-			if err != nil {
-				return nil, err
-			}
-
 			return handler(ctx, req)
 		}
 
