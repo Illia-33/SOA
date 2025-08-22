@@ -130,18 +130,18 @@ func (c *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateReq
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
-	var grpcRequest pb.AuthenticateRequest
+	var grpcRequest pb.AuthByPassword
 	{
 		if len(req.Login) > 0 {
-			grpcRequest.UserId = &pb.AuthenticateRequest_Login{
+			grpcRequest.UserId = &pb.AuthByPassword_Login{
 				Login: req.Login,
 			}
 		} else if len(req.Email) > 0 {
-			grpcRequest.UserId = &pb.AuthenticateRequest_Email{
+			grpcRequest.UserId = &pb.AuthByPassword_Email{
 				Email: req.Email,
 			}
 		} else if len(req.PhoneNumber) > 0 {
-			grpcRequest.UserId = &pb.AuthenticateRequest_PhoneNumber{
+			grpcRequest.UserId = &pb.AuthByPassword_PhoneNumber{
 				PhoneNumber: req.PhoneNumber,
 			}
 		} else {

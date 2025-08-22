@@ -59,7 +59,7 @@ message EditProfileRequest {
     Profile edited_profile_data = 2;
 };
 
-message AuthenticateRequest {
+message AuthByPassword {
     oneof user_id {
         string login = 1;
         string email = 2;
@@ -68,7 +68,7 @@ message AuthenticateRequest {
     string password = 4;
 };
 
-message AuthenticateResponse {
+message AuthResponse {
     string token = 1;
 };
 
@@ -77,5 +77,5 @@ service AccountsService {
     rpc UnregisterUser (UnregisterUserRequest) returns (Empty);
     rpc GetProfile(GetProfileRequest) returns (Profile);
     rpc EditProfile(EditProfileRequest) returns (Empty);
-    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+    rpc Authenticate(AuthByPassword) returns (AuthResponse);
 };
