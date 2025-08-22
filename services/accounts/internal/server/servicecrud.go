@@ -63,8 +63,7 @@ func (s *AccountsService) GetProfile(ctx context.Context, req *pb.GetProfileRequ
 	sql := `
 	SELECT name, surname, birthday, bio
 	FROM profiles
-	WHERE profile_id = $1
-	LIMIT 1;
+	WHERE profile_id = $1;
 	`
 	row := s.dbPool.QueryRow(ctx, sql, req.ProfileId)
 	var (
