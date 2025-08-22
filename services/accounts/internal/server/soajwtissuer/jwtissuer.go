@@ -1,4 +1,4 @@
-package soajwtsigner
+package soajwtissuer
 
 import (
 	"crypto/ed25519"
@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Signer struct {
+type Issuer struct {
 	privateKey ed25519.PrivateKey
 }
 
@@ -19,13 +19,13 @@ type PersonalData struct {
 	ProfileId string
 }
 
-func New(privateKey ed25519.PrivateKey) (Signer, error) {
-	return Signer{
+func New(privateKey ed25519.PrivateKey) (Issuer, error) {
+	return Issuer{
 		privateKey: privateKey,
 	}, nil
 }
 
-func (j *Signer) Sign(data PersonalData, ttl time.Duration) (string, error) {
+func (j *Issuer) Issue(data PersonalData, ttl time.Duration) (string, error) {
 	jwtUuid, err := uuid.NewV7()
 	if err != nil {
 		return "", err

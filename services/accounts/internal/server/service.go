@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"soa-socialnetwork/internal/soajwt"
-	"soa-socialnetwork/services/accounts/internal/server/soajwtsigner"
+	"soa-socialnetwork/services/accounts/internal/server/soajwtissuer"
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"github.com/google/uuid"
@@ -30,7 +30,7 @@ type AccountsService struct {
 	pb.UnimplementedAccountsServiceServer
 
 	dbpool      *pgxpool.Pool
-	jwtSigner   soajwtsigner.Signer
+	jwtIssuer   soajwtissuer.Issuer
 	jwtVerifier soajwt.Verifier
 }
 
@@ -41,7 +41,7 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 		return nil, err
 	}
 
-	signer, err := soajwtsigner.New(cfg.JwtPrivateKey)
+	jwtIssuer, err := soajwtissuer.New(cfg.JwtPrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 
 	return &AccountsService{
 		dbpool:      pool,
-		jwtSigner:   signer,
+		jwtIssuer:   jwtIssuer,
 		jwtVerifier: soajwt.NewVerifier(pubkey),
 	}, nil
 }
@@ -229,7 +229,7 @@ func (s *AccountsService) Authenticate(ctx context.Context, req *pb.Authenticate
 	`, column)
 
 	row := s.dbpool.QueryRow(ctx, sql, userId)
-	var data soajwtsigner.PersonalData
+	var data soajwtissuer.PersonalData
 	var password string
 	if err := row.Scan(&data.AccountId, &data.ProfileId, &password); err != nil {
 		return nil, errors.New("user not found")
@@ -239,7 +239,7 @@ func (s *AccountsService) Authenticate(ctx context.Context, req *pb.Authenticate
 		return nil, errors.New("passwords doesn't match")
 	}
 
-	token, err := s.jwtSigner.Sign(data, 30*time.Second)
+	token, err := s.jwtIssuer.Issue(data, 30*time.Second)
 	if err != nil {
 		log.Printf("cannot create jwt token: %v", err)
 		return nil, err
