@@ -53,7 +53,7 @@ func WithAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 			}
 
 			profileId := ctx.Param("profile_id")
-			if len(profileId) > 0 && token.ProfileID.String() != profileId {
+			if len(profileId) > 0 && token.ProfileId.String() != profileId {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, "not enough rights")
 				return
 			}

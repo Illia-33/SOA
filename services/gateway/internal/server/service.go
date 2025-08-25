@@ -51,7 +51,7 @@ func (c *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProf
 	}
 
 	return api.RegisterProfileResponse{
-		ProfileID: resp.ProfileId,
+		ProfileId: resp.ProfileId,
 	}, httperr.Ok()
 }
 

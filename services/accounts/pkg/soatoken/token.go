@@ -9,8 +9,8 @@ import (
 )
 
 type Token struct {
-	ProfileID uuid.UUID
-	AccountID int
+	ProfileId uuid.UUID
+	AccountId int
 	Salt      [28]byte
 }
 
@@ -33,8 +33,8 @@ func Parse(tokenStr string) (Token, error) {
 	}
 
 	return Token{
-		ProfileID: profileId,
-		AccountID: int(binary.LittleEndian.Uint32(rawToken[16:20])),
+		ProfileId: profileId,
+		AccountId: int(binary.LittleEndian.Uint32(rawToken[16:20])),
 		Salt:      [28]byte(rawToken[20:]),
 	}, nil
 }

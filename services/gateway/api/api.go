@@ -12,7 +12,7 @@ type RegisterProfileRequest struct {
 }
 
 type RegisterProfileResponse struct {
-	ProfileID string `json:"profile_id"`
+	ProfileId string `json:"profile_id"`
 }
 
 type GetProfileResponse struct {

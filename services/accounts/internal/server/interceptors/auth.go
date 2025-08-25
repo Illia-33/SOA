@@ -79,7 +79,7 @@ func verifySoaToken(tokenStr string, verifier soatoken.Verifier, requestProfileI
 		return err
 	}
 
-	if token.ProfileID.String() != requestProfileId {
+	if token.ProfileId.String() != requestProfileId {
 		return errors.New("access denied")
 	}
 

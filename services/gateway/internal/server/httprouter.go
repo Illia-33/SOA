@@ -53,7 +53,7 @@ func createRouter(serviceCtx *GatewayService) httpRouter {
 		))
 
 		idGroup := profileGroup.Group("/:profile_id")
-		idGroup.Use(query.WithProfileID())
+		idGroup.Use(query.WithProfileId())
 		idGroup.GET("", createHandler(
 			func(qp *query.Params, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
 				return serviceCtx.GetProfileInfo(qp)
