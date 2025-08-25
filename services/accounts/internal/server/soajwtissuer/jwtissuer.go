@@ -19,10 +19,10 @@ type PersonalData struct {
 	ProfileId string
 }
 
-func New(privateKey ed25519.PrivateKey) (Issuer, error) {
+func New(privateKey ed25519.PrivateKey) Issuer {
 	return Issuer{
 		privateKey: privateKey,
-	}, nil
+	}
 }
 
 func (j *Issuer) Issue(data PersonalData, ttl time.Duration) (string, error) {

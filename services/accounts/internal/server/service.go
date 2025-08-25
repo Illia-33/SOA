@@ -36,10 +36,7 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 		return nil, err
 	}
 
-	jwtIssuer, err := soajwtissuer.New(cfg.JwtPrivateKey)
-	if err != nil {
-		return nil, err
-	}
+	jwtIssuer := soajwtissuer.New(cfg.JwtPrivateKey)
 
 	pubkey := cfg.JwtPrivateKey.Public().(ed25519.PublicKey)
 	service := &AccountsService{
