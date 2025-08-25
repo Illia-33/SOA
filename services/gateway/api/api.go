@@ -31,6 +31,7 @@ type EditProfileRequest struct {
 	Email       types.Optional[types.Email]       `json:"email"`
 }
 
+// Exactly one of {login,email,phone_number} must have value
 type AuthenticateRequest struct {
 	Login       types.Optional[types.Login]       `json:"login"`
 	Email       types.Optional[types.Email]       `json:"email"`
@@ -42,6 +43,7 @@ type AuthenticateResponse struct {
 	Token string `json:"token"`
 }
 
+// Ttl (time to live) must be positive
 type CreateApiTokenRequest struct {
 	Auth        AuthenticateRequest `json:"auth"`
 	ReadAccess  bool                `json:"read_access"`
