@@ -11,12 +11,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var jwt_regexp = regexp.MustCompile(`^Bearer [\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}$`)
+var soatoken_regexp = regexp.MustCompile(`^SoaToken [\-A-Za-z0-9\+\/_]={0,3}`)
+
 func WithAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		auth := ctx.Request.Header.Get("Authorization")
 		if strings.HasPrefix(auth, "Bearer") {
-			jwtRegex := regexp.MustCompile(`^Bearer [\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}$`)
-			if !jwtRegex.MatchString(auth) {
+			if !jwt_regexp.MatchString(auth) {
 				ctx.AbortWithStatusJSON(http.StatusBadRequest, "broken jwt token")
 				return
 			}
@@ -38,8 +40,7 @@ func WithAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 			params.AuthToken = rawToken
 			params.AuthKind = AUTH_TOKEN_JWT
 		} else if strings.HasPrefix(auth, "SoaToken") {
-			soatokenRegex := regexp.MustCompile(`^SoaToken [\-A-Za-z0-9\+\/_]={0,3}`)
-			if !soatokenRegex.MatchString(auth) {
+			if !soatoken_regexp.MatchString(auth) {
 				ctx.AbortWithStatusJSON(http.StatusBadRequest, "broken soa token")
 				return
 			}
