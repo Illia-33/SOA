@@ -2,15 +2,12 @@ package server
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	pb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/gateway/api"
-	"soa-socialnetwork/services/gateway/internal/server/birthday"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/query"
-	"time"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -42,12 +39,12 @@ func (c *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProf
 	}
 
 	resp, err := stub.RegisterUser(context.Background(), &pb.RegisterUserRequest{
-		Login:       req.Login,
-		Password:    req.Password,
-		Email:       req.Email,
-		PhoneNumber: req.PhoneNumber,
-		Name:        req.Name,
-		Surname:     req.Surname,
+		Login:       string(req.Login),
+		Password:    string(req.Password),
+		Email:       string(req.Email),
+		PhoneNumber: string(req.PhoneNumber),
+		Name:        string(req.Name),
+		Surname:     string(req.Surname),
 	})
 	if err != nil {
 		return api.RegisterProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
@@ -86,21 +83,17 @@ func (c *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileR
 	}
 
 	var pbBirthday *timestamppb.Timestamp = nil
-	if len(req.Birthday) > 0 {
-		bday, err := birthday.Parse(req.Birthday)
-		if err != nil {
-			return httperr.New(http.StatusInternalServerError, errors.New("bad birthday, check validity"))
-		}
-		pbBirthday = timestamppb.New(bday.AsTime())
+	if req.Birthday.HasValue {
+		pbBirthday = timestamppb.New(req.Birthday.Value.Time)
 	}
 
 	_, err = stub.EditProfile(context.Background(), &pb.EditProfileRequest{
 		ProfileId: qp.ProfileId,
 		EditedProfileData: &pb.Profile{
-			Name:     req.Name,
-			Surname:  req.Surname,
+			Name:     string(req.Name.Value),
+			Surname:  string(req.Surname.Value),
 			Birthday: pbBirthday,
-			Bio:      req.Bio,
+			Bio:      string(req.Bio.Value),
 		},
 	})
 	if err != nil {
@@ -127,23 +120,23 @@ func (c *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
 }
 
 func (c *GatewayService) buildAuthByPassword(req *api.AuthenticateRequest) (proto pb.AuthByPassword) {
-	if len(req.Login) > 0 {
+	if req.Login.HasValue {
 		proto.UserId = &pb.AuthByPassword_Login{
-			Login: req.Login,
+			Login: string(req.Login.Value),
 		}
-	} else if len(req.Email) > 0 {
+	} else if req.Email.HasValue {
 		proto.UserId = &pb.AuthByPassword_Email{
-			Email: req.Email,
+			Email: string(req.Email.Value),
 		}
-	} else if len(req.PhoneNumber) > 0 {
+	} else if req.PhoneNumber.HasValue {
 		proto.UserId = &pb.AuthByPassword_PhoneNumber{
-			PhoneNumber: req.PhoneNumber,
+			PhoneNumber: string(req.PhoneNumber.Value),
 		}
 	} else {
-		panic("shouldn't reach here")
+		panic("at least one user id must be provided")
 	}
 
-	proto.Password = req.Password
+	proto.Password = string(req.Password)
 	return
 }
 
@@ -172,17 +165,13 @@ func (c *GatewayService) CreateApiToken(qp *query.Params, req *api.CreateApiToke
 	}
 
 	protoAuthByPassword := c.buildAuthByPassword(&req.Auth)
-	ttl, err := time.ParseDuration(req.Ttl)
-	if err != nil {
-		panic("bad duration verification")
-	}
 
 	resp, err := stub.CreateApiToken(context.Background(), &pb.CreateApiTokenRequest{
 		Auth: &protoAuthByPassword,
 		Params: &pb.AuthTokenParams{
 			ReadAccess:  req.ReadAccess,
 			WriteAccess: req.WriteAccess,
-			Ttl:         durationpb.New(ttl),
+			Ttl:         durationpb.New(req.Ttl.Duration),
 		},
 	})
 

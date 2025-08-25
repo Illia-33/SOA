@@ -1,12 +1,14 @@
 package api
 
+import "soa-socialnetwork/services/gateway/pkg/types"
+
 type RegisterProfileRequest struct {
-	Login       string `json:"login"`
-	Password    string `json:"password"`
-	Email       string `json:"email"`
-	PhoneNumber string `json:"phone_number"`
-	Name        string `json:"name"`
-	Surname     string `json:"surname"`
+	Login       types.Login       `json:"login"`
+	Password    types.Password    `json:"password"`
+	Email       types.Email       `json:"email"`
+	PhoneNumber types.PhoneNumber `json:"phone_number"`
+	Name        types.Name        `json:"name"`
+	Surname     types.Surname     `json:"surname"`
 }
 
 type RegisterProfileResponse struct {
@@ -21,19 +23,19 @@ type GetProfileResponse struct {
 }
 
 type EditProfileRequest struct {
-	Name        string `json:"name"`
-	Surname     string `json:"surname"`
-	Birthday    string `json:"birthday"`
-	Bio         string `json:"bio"`
-	PhoneNumber string `json:"phone_number"`
-	Email       string `json:"email"`
+	Name        types.Optional[types.Name]        `json:"name"`
+	Surname     types.Optional[types.Surname]     `json:"surname"`
+	Birthday    types.Optional[types.Date]        `json:"birthday"`
+	Bio         types.Optional[types.Bio]         `json:"bio"`
+	PhoneNumber types.Optional[types.PhoneNumber] `json:"phone_number"`
+	Email       types.Optional[types.Email]       `json:"email"`
 }
 
 type AuthenticateRequest struct {
-	Login       string `json:"login"`
-	Email       string `json:"email"`
-	PhoneNumber string `json:"phone_number"`
-	Password    string `json:"password"`
+	Login       types.Optional[types.Login]       `json:"login"`
+	Email       types.Optional[types.Email]       `json:"email"`
+	PhoneNumber types.Optional[types.PhoneNumber] `json:"phone_number"`
+	Password    types.Password                    `json:"password"`
 }
 
 type AuthenticateResponse struct {
@@ -44,7 +46,7 @@ type CreateApiTokenRequest struct {
 	Auth        AuthenticateRequest `json:"auth"`
 	ReadAccess  bool                `json:"read_access"`
 	WriteAccess bool                `json:"write_access"`
-	Ttl         string              `json:"ttl"`
+	Ttl         types.Duration      `json:"ttl"`
 }
 
 type CreateApiTokenResponse struct {
