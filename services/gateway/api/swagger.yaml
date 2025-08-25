@@ -1,123 +1,266 @@
-openapi: 3.0.4
+openapi: 3.0.3
 info:
-  title: Gateway API
-  version: 1.0.0
+  title: Profile Service API
+  description: REST API for user profile registration, authentication, and profile management.
+  version: "1.0.0"
+
 servers:
-- url: /
+  - url: http://localhost:8080/api/v1
+
 paths:
-  /api/v1/profile:
+  /profile:
     post:
       summary: Register a new profile
+      operationId: registerProfile
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterProfileRequest"
+              $ref: '#/components/schemas/RegisterProfileRequest'
       responses:
         "200":
-          description: Profile has been created successfully
+          description: Profile successfully created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RegisterProfileResponse"
+                $ref: '#/components/schemas/RegisterProfileResponse'
         "400":
-          description: Invalid arguments
-  /api/v1/profile/{id}:
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /profile/{profile_id}:
     get:
       summary: Get profile information
+      operationId: getProfile
       parameters:
-      - name: id
-        in: path
-        description: profile ID
-        required: true
-        style: simple
-        explode: false
-        schema: {}
+        - name: profile_id
+          in: path
+          required: true
+          description: Unique profile identifier
+          schema:
+            type: string
       responses:
         "200":
-          description: OK
+          description: Profile information
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GetProfileResponse"
-        "401":
-          description: User is not authorized
+                $ref: '#/components/schemas/GetProfileResponse'
+        "400":
+          description: Invalid profile_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "404":
-          description: Cannot find profile with specified ID
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Modify profile information
+      summary: Edit profile
+      operationId: editProfile
+      security:
+        - bearerAuth: []
+        - soaTokenAuth: []
       parameters:
-      - name: id
-        in: path
-        description: profile ID
-        required: true
-        style: simple
-        explode: false
-        schema: {}
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/EditProfileRequest"
+              $ref: '#/components/schemas/EditProfileRequest'
       responses:
         "200":
-          description: OK, profile information has been changed
+          description: Successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyResponse'
         "400":
-          description: Invalid values of new profile information
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "401":
-          description: User is not authorized
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "403":
-          description: User doesn't have rights to change profile info
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "404":
-          description: Cannot find profile with specified ID
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: Delete profile
+      operationId: deleteProfile
+      security:
+        - bearerAuth: []
+        - soaTokenAuth: []
       parameters:
-      - name: id
-        in: path
-        description: profile ID
-        required: true
-        style: simple
-        explode: false
-        schema: {}
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
-          description: OK, profile has been deleted successfully
-        "401":
-          description: User is not authorized
-        "403":
-          description: User doesn't have rights to delete profile
-        "404":
-          description: Cannot find profile with specified ID
-  /api/v1/auth:
-    post:
-      summary: Receive a new auth token
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AuthenticateRequest"
-      responses:
-        "200":
-          description: A new auth token has been generated
+          description: Successfully deleted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthenticateResponse"
+                $ref: '#/components/schemas/EmptyResponse'
         "401":
-          description: Authentication failed
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth:
+    post:
+      summary: Authenticate user
+      operationId: authenticate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticateRequest'
+      responses:
+        "200":
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticateResponse'
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api_token:
+    post:
+      summary: Create API token
+      operationId: createApiToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiTokenRequest'
+      responses:
+        "200":
+          description: API token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateApiTokenResponse'
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "401":
+          description: Invalid authentication credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     RegisterProfileRequest:
+      type: object
       properties:
         login:
           type: string
-          minLength: 1
-          maxLength: 32
         password:
           type: string
-          minLength: 6
-          maxLength: 32
+          format: password
         email:
           type: string
           format: email
@@ -125,20 +268,18 @@ components:
           type: string
         name:
           type: string
-          minLength: 1
-          maxLength: 32
         surname:
           type: string
-          minLength: 1
-          maxLength: 32
+      required: [login, password, email, phone_number, name, surname]
+
     RegisterProfileResponse:
+      type: object
       properties:
         profile_id:
           type: string
-          format: uuid
-      example:
-        profile_id: ""
+
     GetProfileResponse:
+      type: object
       properties:
         name:
           type: string
@@ -149,39 +290,31 @@ components:
           format: date
         bio:
           type: string
-          maxLength: 256
-      example:
-        birthday: ""
-        surname: ""
-        name: ""
-        bio: ""
+
     EditProfileRequest:
+      type: object
       properties:
         name:
           type: string
-          minLength: 1
-          maxLength: 32
         surname:
           type: string
-          minLength: 1
-          maxLength: 32
         birthday:
           type: string
           format: date
         bio:
           type: string
-          maxLength: 256
         phone_number:
           type: string
         email:
           type: string
           format: email
+      required: [name, surname]
+
     AuthenticateRequest:
+      type: object
       properties:
         login:
           type: string
-          minLength: 1
-          maxLength: 32
         email:
           type: string
           format: email
@@ -189,9 +322,64 @@ components:
           type: string
         password:
           type: string
-          minLength: 6
-          maxLength: 32
+          format: password
+      required: [password]
+
     AuthenticateResponse:
+      type: object
       properties:
         token:
           type: string
+
+    CreateApiTokenRequest:
+      type: object
+      properties:
+        auth:
+          $ref: '#/components/schemas/AuthenticateRequest'
+        read_access:
+          type: boolean
+        write_access:
+          type: boolean
+        ttl:
+          type: string
+          description: Token lifetime (e.g., "1h", "24h")
+          example: "24h"
+      required: [auth, read_access, write_access, ttl]
+
+    CreateApiTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+
+    EmptyResponse:
+      type: object
+      description: Empty response ({})
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          example: invalid_input
+        message:
+          type: string
+          description: Human-readable error message
+          example: Email is required
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+    soaTokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Use long-lived API tokens with the format:
+        ```
+        Authorization: SoaToken <API_KEY>
+        ```
