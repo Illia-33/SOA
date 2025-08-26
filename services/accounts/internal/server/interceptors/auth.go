@@ -10,7 +10,9 @@ import (
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func needAuth(methodName string) bool {
@@ -67,7 +69,7 @@ func verifyJwtToken(tokenStr string, verifier *soajwt.Verifier, requestProfileId
 	}
 
 	if token.Subject != requestProfileId {
-		return errors.New("access denied")
+		return status.Error(codes.PermissionDenied, "access denied")
 	}
 
 	return nil
@@ -80,7 +82,7 @@ func verifySoaToken(tokenStr string, verifier soatoken.Verifier, requestProfileI
 	}
 
 	if token.ProfileId.String() != requestProfileId {
-		return errors.New("access denied")
+		return status.Error(codes.PermissionDenied, "access denied")
 	}
 
 	return verifier.Verify(tokenStr, req)

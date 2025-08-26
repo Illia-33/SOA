@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
-	"errors"
 	"soa-socialnetwork/services/accounts/pkg/soatoken"
 	pb "soa-socialnetwork/services/accounts/proto"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type serviceSoaTokenVerifier struct {
@@ -21,7 +23,7 @@ func (v serviceSoaTokenVerifier) Verify(token string, req soatoken.RightsRequire
 	}
 
 	if response.GetInvalid() != nil {
-		return errors.New("access denied")
+		return status.Error(codes.PermissionDenied, "token invalid")
 	}
 
 	valid := response.GetValid()
@@ -30,11 +32,11 @@ func (v serviceSoaTokenVerifier) Verify(token string, req soatoken.RightsRequire
 	}
 
 	if req.Read && !valid.ReadAccess {
-		return errors.New("need read access")
+		return status.Error(codes.PermissionDenied, "need read access")
 	}
 
 	if req.Write && !valid.WriteAccess {
-		return errors.New("need write access")
+		return status.Error(codes.PermissionDenied, "need write access")
 	}
 
 	return nil
