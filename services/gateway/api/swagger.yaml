@@ -303,12 +303,6 @@ components:
           format: date
         bio:
           type: string
-        phone_number:
-          type: string
-        email:
-          type: string
-          format: email
-      required: [name, surname]
 
     AuthenticateRequest:
       type: object

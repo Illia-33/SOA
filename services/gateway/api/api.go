@@ -23,12 +23,10 @@ type GetProfileResponse struct {
 }
 
 type EditProfileRequest struct {
-	Name        types.Optional[types.Name]        `json:"name"`
-	Surname     types.Optional[types.Surname]     `json:"surname"`
-	Birthday    types.Optional[types.Date]        `json:"birthday"`
-	Bio         types.Optional[types.Bio]         `json:"bio"`
-	PhoneNumber types.Optional[types.PhoneNumber] `json:"phone_number"`
-	Email       types.Optional[types.Email]       `json:"email"`
+	Name     types.Optional[types.Name]    `json:"name"`
+	Surname  types.Optional[types.Surname] `json:"surname"`
+	Birthday types.Optional[types.Date]    `json:"birthday"`
+	Bio      types.Optional[types.Bio]     `json:"bio"`
 }
 
 // Exactly one of {login,email,phone_number} must have value
