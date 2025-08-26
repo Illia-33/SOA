@@ -5,43 +5,44 @@ import (
 	"fmt"
 	"net/http"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
-	pb "soa-socialnetwork/services/accounts/proto"
+	accountsPb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/query"
+	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type GatewayService struct {
-	jwtVerifier        soajwt.Verifier
-	accountsGrpcTarget string
+	jwtVerifier         soajwt.Verifier
+	accountsGrpcTarget  string
+	accountsStubFactory soagrpc.AccountsStubFactory
 }
 
 func initService(cfg GatewayServiceConfig) GatewayService {
+	if cfg.AccountsServiceStubFactory == nil {
+		cfg.AccountsServiceStubFactory = defaultAccountsStubFactory{}
+	}
 	return GatewayService{
-		jwtVerifier:        soajwt.NewVerifier(cfg.JwtPublicKey),
-		accountsGrpcTarget: fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
+		jwtVerifier:         soajwt.NewVerifier(cfg.JwtPublicKey),
+		accountsGrpcTarget:  fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
+		accountsStubFactory: cfg.AccountsServiceStubFactory,
 	}
 }
 
-func (c *GatewayService) createAccountsServiceStub(qp *query.Params) (pb.AccountsServiceClient, error) {
-	client, err := createGrpcClient(c.accountsGrpcTarget, qp)
-	if err != nil {
-		return nil, err
-	}
-
-	return pb.NewAccountsServiceClient(client), nil
+func (s *GatewayService) createAccountsStub(qp *query.Params) (accountsPb.AccountsServiceClient, error) {
+	return s.accountsStubFactory.New(s.accountsGrpcTarget, qp)
 }
 
-func (c *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
-	stub, err := c.createAccountsServiceStub(qp)
+func (s *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
+	stub, err := s.createAccountsStub(qp)
 	if err != nil {
 		return api.RegisterProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
-	resp, err := stub.RegisterUser(context.Background(), &pb.RegisterUserRequest{
+	resp, err := stub.RegisterUser(context.Background(), &accountsPb.RegisterUserRequest{
 		Login:       string(req.Login),
 		Password:    string(req.Password),
 		Email:       string(req.Email),
@@ -58,13 +59,13 @@ func (c *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProf
 	}, httperr.Ok()
 }
 
-func (c *GatewayService) GetProfileInfo(qp *query.Params) (api.GetProfileResponse, httperr.Err) {
-	stub, err := c.createAccountsServiceStub(qp)
+func (s *GatewayService) GetProfileInfo(qp *query.Params) (api.GetProfileResponse, httperr.Err) {
+	stub, err := s.createAccountsStub(qp)
 	if err != nil {
 		return api.GetProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
-	resp, err := stub.GetProfile(context.Background(), &pb.GetProfileRequest{
+	resp, err := stub.GetProfile(context.Background(), &accountsPb.GetProfileRequest{
 		ProfileId: qp.ProfileId,
 	})
 	if err != nil {
@@ -79,8 +80,8 @@ func (c *GatewayService) GetProfileInfo(qp *query.Params) (api.GetProfileRespons
 	}, httperr.Ok()
 }
 
-func (c *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileRequest) httperr.Err {
-	stub, err := c.createAccountsServiceStub(qp)
+func (s *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileRequest) httperr.Err {
+	stub, err := s.createAccountsStub(qp)
 	if err != nil {
 		return httperr.New(http.StatusInternalServerError, err)
 	}
@@ -90,9 +91,9 @@ func (c *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileR
 		pbBirthday = timestamppb.New(req.Birthday.Value.Time)
 	}
 
-	_, err = stub.EditProfile(context.Background(), &pb.EditProfileRequest{
+	_, err = stub.EditProfile(context.Background(), &accountsPb.EditProfileRequest{
 		ProfileId: qp.ProfileId,
-		EditedProfileData: &pb.Profile{
+		EditedProfileData: &accountsPb.Profile{
 			Name:     string(req.Name.Value),
 			Surname:  string(req.Surname.Value),
 			Birthday: pbBirthday,
@@ -106,13 +107,13 @@ func (c *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileR
 	return httperr.Ok()
 }
 
-func (c *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
-	stub, err := c.createAccountsServiceStub(qp)
+func (s *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
+	stub, err := s.createAccountsStub(qp)
 	if err != nil {
 		return httperr.New(http.StatusInternalServerError, err)
 	}
 
-	_, err = stub.UnregisterUser(context.Background(), &pb.UnregisterUserRequest{
+	_, err = stub.UnregisterUser(context.Background(), &accountsPb.UnregisterUserRequest{
 		ProfileId: qp.ProfileId,
 	})
 	if err != nil {
@@ -122,17 +123,17 @@ func (c *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
 	return httperr.Ok()
 }
 
-func (c *GatewayService) buildAuthByPassword(req *api.AuthenticateRequest) (proto pb.AuthByPassword) {
+func (s *GatewayService) buildAuthByPassword(req *api.AuthenticateRequest) (proto accountsPb.AuthByPassword) {
 	if req.Login.HasValue {
-		proto.UserId = &pb.AuthByPassword_Login{
+		proto.UserId = &accountsPb.AuthByPassword_Login{
 			Login: string(req.Login.Value),
 		}
 	} else if req.Email.HasValue {
-		proto.UserId = &pb.AuthByPassword_Email{
+		proto.UserId = &accountsPb.AuthByPassword_Email{
 			Email: string(req.Email.Value),
 		}
 	} else if req.PhoneNumber.HasValue {
-		proto.UserId = &pb.AuthByPassword_PhoneNumber{
+		proto.UserId = &accountsPb.AuthByPassword_PhoneNumber{
 			PhoneNumber: string(req.PhoneNumber.Value),
 		}
 	} else {
@@ -143,13 +144,13 @@ func (c *GatewayService) buildAuthByPassword(req *api.AuthenticateRequest) (prot
 	return
 }
 
-func (c *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
-	stub, err := c.createAccountsServiceStub(qp)
+func (s *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
+	stub, err := s.createAccountsStub(qp)
 	if err != nil {
 		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
-	protoRequest := c.buildAuthByPassword(req)
+	protoRequest := s.buildAuthByPassword(req)
 	resp, err := stub.Authenticate(context.Background(), &protoRequest)
 
 	if err != nil {
@@ -161,17 +162,17 @@ func (c *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateReq
 	}, httperr.Ok()
 }
 
-func (c *GatewayService) CreateApiToken(qp *query.Params, req *api.CreateApiTokenRequest) (api.CreateApiTokenResponse, httperr.Err) {
-	stub, err := c.createAccountsServiceStub(qp)
+func (s *GatewayService) CreateApiToken(qp *query.Params, req *api.CreateApiTokenRequest) (api.CreateApiTokenResponse, httperr.Err) {
+	stub, err := s.createAccountsStub(qp)
 	if err != nil {
 		return api.CreateApiTokenResponse{}, httperr.New(http.StatusInternalServerError, err)
 	}
 
-	protoAuthByPassword := c.buildAuthByPassword(&req.Auth)
+	protoAuthByPassword := s.buildAuthByPassword(&req.Auth)
 
-	resp, err := stub.CreateApiToken(context.Background(), &pb.CreateApiTokenRequest{
+	resp, err := stub.CreateApiToken(context.Background(), &accountsPb.CreateApiTokenRequest{
 		Auth: &protoAuthByPassword,
-		Params: &pb.AuthTokenParams{
+		Params: &accountsPb.AuthTokenParams{
 			ReadAccess:  req.ReadAccess,
 			WriteAccess: req.WriteAccess,
 			Ttl:         durationpb.New(req.Ttl.Duration),
