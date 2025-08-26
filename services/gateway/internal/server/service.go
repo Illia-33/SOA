@@ -21,7 +21,7 @@ type GatewayService struct {
 	accountsStubFactory soagrpc.AccountsStubFactory
 }
 
-func initService(cfg GatewayServiceConfig) GatewayService {
+func newGatewayService(cfg GatewayServiceConfig) GatewayService {
 	if cfg.AccountsServiceStubFactory == nil {
 		cfg.AccountsServiceStubFactory = defaultAccountsStubFactory{}
 	}

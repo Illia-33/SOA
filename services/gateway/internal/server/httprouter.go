@@ -40,7 +40,7 @@ func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequ
 	}
 }
 
-func createRouter(serviceCtx *GatewayService) httpRouter {
+func newHttpRouter(service *GatewayService) httpRouter {
 	router := gin.Default()
 	restApi := router.Group("/api/v1")
 
@@ -48,7 +48,7 @@ func createRouter(serviceCtx *GatewayService) httpRouter {
 	{
 		profileGroup.POST("", createHandler(
 			func(qp *query.Params, r *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
-				return serviceCtx.RegisterProfile(qp, r)
+				return service.RegisterProfile(qp, r)
 			},
 		))
 
@@ -56,34 +56,34 @@ func createRouter(serviceCtx *GatewayService) httpRouter {
 		idGroup.Use(query.WithProfileId())
 		idGroup.GET("", createHandler(
 			func(qp *query.Params, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
-				return serviceCtx.GetProfileInfo(qp)
+				return service.GetProfileInfo(qp)
 			},
 		))
 
 		idAuthGroup := idGroup.Group("")
-		idAuthGroup.Use(query.WithAuth(&serviceCtx.jwtVerifier))
+		idAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
 		idAuthGroup.PUT("", createHandler(
 			func(qp *query.Params, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, serviceCtx.EditProfileInfo(qp, r)
+				return emptyResponse{}, service.EditProfileInfo(qp, r)
 			},
 		))
 
 		idAuthGroup.DELETE("", createHandler(
 			func(qp *query.Params, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, serviceCtx.DeleteProfile(qp)
+				return emptyResponse{}, service.DeleteProfile(qp)
 			},
 		))
 	}
 
 	restApi.POST("/auth", createHandler(
 		func(qp *query.Params, r *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
-			return serviceCtx.Authenticate(qp, r)
+			return service.Authenticate(qp, r)
 		},
 	))
 
 	restApi.POST("/api_token", createHandler(
 		func(qp *query.Params, r *api.CreateApiTokenRequest) (api.CreateApiTokenResponse, httperr.Err) {
-			return serviceCtx.CreateApiToken(qp, r)
+			return service.CreateApiToken(qp, r)
 		},
 	))
 

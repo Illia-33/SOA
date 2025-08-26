@@ -15,8 +15,8 @@ func (s *GatewayServer) Run() error {
 }
 
 func Create(port int, cfg GatewayServiceConfig) (GatewayServer, error) {
-	service := initService(cfg)
-	router := createRouter(&service)
+	service := newGatewayService(cfg)
+	router := newHttpRouter(&service)
 	return GatewayServer{
 		context: service,
 		router:  router,
