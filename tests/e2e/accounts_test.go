@@ -42,7 +42,7 @@ func jwtAuth(jwt string) string {
 	return fmt.Sprintf("Bearer %s", jwt)
 }
 
-func soaTokenAuthorization(soa string) string {
+func soaTokenAuth(soa string) string {
 	return fmt.Sprintf("SoaToken %s", soa)
 }
 
@@ -130,6 +130,20 @@ func tryDeleteProfile(t *testing.T, profileId string, authorization string) *htt
 func deleteProfileOk(t *testing.T, profileId string, authorization string) {
 	resp := tryDeleteProfile(t, profileId, authorization)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func tryCreateApiToken(t *testing.T, createTokenRequest map[string]any) *http.Response {
+	resp, err := http.Post(fmt.Sprintf("%s/api_token", gateway_api_url), "application/json", makeReader(createTokenRequest))
+	require.NoError(t, err, "error while creating request")
+	return resp
+}
+
+func createApiTokenOk(t *testing.T, createTokenRequest map[string]any) string {
+	resp := tryCreateApiToken(t, createTokenRequest)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	createTokenResponse, err := parseResponse(resp)
+	require.NoError(t, err, "error while parsing response")
+	return createTokenResponse["token"].(string)
 }
 
 func TestRegister(t *testing.T) {
@@ -227,7 +241,7 @@ func TestAuthJwtTimeout(t *testing.T) {
 	resp := tryEditProfile(t, id, map[string]any{
 		"bio": "new bio",
 	}, jwtAuth(token))
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
 func TestAuthWrongToken(t *testing.T) {
@@ -257,7 +271,7 @@ func TestAuthWrongToken(t *testing.T) {
 	resp := tryEditProfile(t, id1, map[string]any{
 		"bio": "new bio",
 	}, jwtAuth(token))
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
 func TestUpdate(t *testing.T) {
@@ -302,4 +316,59 @@ func TestDelete(t *testing.T) {
 
 	profileInfo := tryGetProfileInfo(t, id)
 	assert.Equal(t, http.StatusNotFound, profileInfo.StatusCode)
+}
+
+func TestApiTokenSimple(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "api_token_simple",
+		"password":     "testpasswd",
+		"email":        "api_token_simple@yahoo.com",
+		"phone_number": "+79250000009",
+		"name":         "Test",
+		"surname":      "ApiTokenSimple",
+	})
+
+	token := createApiTokenOk(t, map[string]any{
+		"auth": map[string]any{
+			"login":    "api_token_simple",
+			"password": "testpasswd",
+		},
+		"read_access":  true,
+		"write_access": true,
+		"ttl":          "1h",
+	})
+
+	editProfileOk(t, id, map[string]any{
+		"bio": "new bio",
+	}, soaTokenAuth(token))
+}
+
+func TestApiTokenTimeout(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "api_token_timeout",
+		"password":     "testpasswd",
+		"email":        "api_token_timeout@yahoo.com",
+		"phone_number": "+79250000010",
+		"name":         "Test",
+		"surname":      "ApiTokenTimeout",
+	})
+
+	token := createApiTokenOk(t, map[string]any{
+		"auth": map[string]any{
+			"login":    "api_token_timeout",
+			"password": "testpasswd",
+		},
+		"read_access":  true,
+		"write_access": true,
+		"ttl":          "5s",
+	})
+
+	time.Sleep(6 * time.Second)
+
+	resp := tryEditProfile(t, id, map[string]any{
+		"bio": "new bio",
+	}, soaTokenAuth(token))
+	b, err := io.ReadAll(resp.Body)
+	fmt.Println(string(b), err)
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
