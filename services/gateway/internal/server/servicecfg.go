@@ -5,9 +5,18 @@ import (
 	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
 )
 
+// Set of parameters of gateway service
 type GatewayServiceConfig struct {
-	JwtPublicKey               ed25519.PublicKey
-	AccountsServiceHost        string
-	AccountsServicePort        int
+	// ed25519 public key used for verifying jwt tokens
+	JwtPublicKey ed25519.PublicKey
+
+	// Hostname of accounts service
+	AccountsServiceHost string
+
+	// Port of accounts service
+	AccountsServicePort int
+
+	// Factory used for creating stubs for communication with accounts service.
+	// Could be nil, then default gRPC communication will be used.
 	AccountsServiceStubFactory soagrpc.AccountsStubFactory
 }
