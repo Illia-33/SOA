@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -74,8 +76,7 @@ func (s *AccountsService) GetProfile(ctx context.Context, req *pb.GetProfileRequ
 	)
 
 	if err := row.Scan(&name, &surname, &pgBirthday, &bio); err != nil {
-		log.Printf("error while getting %s profile: %v", req.ProfileId, err)
-		return nil, errors.New("profile not found")
+		return nil, status.Error(codes.NotFound, "profile not found")
 	}
 
 	var birthday *timestamppb.Timestamp = nil
@@ -148,7 +149,7 @@ func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRe
 	}
 
 	if cnt == 0 {
-		return nil, errors.New("user not found")
+		return nil, status.Error(codes.NotFound, "user not found")
 	}
 
 	if cnt != 1 {

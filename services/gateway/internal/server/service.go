@@ -51,7 +51,7 @@ func (s *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProf
 		Surname:     string(req.Surname),
 	})
 	if err != nil {
-		return api.RegisterProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
+		return api.RegisterProfileResponse{}, httperr.FromGrpcError(err)
 	}
 
 	return api.RegisterProfileResponse{
@@ -69,7 +69,7 @@ func (s *GatewayService) GetProfileInfo(qp *query.Params) (api.GetProfileRespons
 		ProfileId: qp.ProfileId,
 	})
 	if err != nil {
-		return api.GetProfileResponse{}, httperr.New(http.StatusInternalServerError, err)
+		return api.GetProfileResponse{}, httperr.FromGrpcError(err)
 	}
 
 	return api.GetProfileResponse{
@@ -101,7 +101,7 @@ func (s *GatewayService) EditProfileInfo(qp *query.Params, req *api.EditProfileR
 		},
 	})
 	if err != nil {
-		return httperr.New(http.StatusInternalServerError, err)
+		return httperr.FromGrpcError(err)
 	}
 
 	return httperr.Ok()
@@ -117,7 +117,7 @@ func (s *GatewayService) DeleteProfile(qp *query.Params) httperr.Err {
 		ProfileId: qp.ProfileId,
 	})
 	if err != nil {
-		return httperr.New(http.StatusInternalServerError, err)
+		return httperr.FromGrpcError(err)
 	}
 
 	return httperr.Ok()
@@ -154,7 +154,7 @@ func (s *GatewayService) Authenticate(qp *query.Params, req *api.AuthenticateReq
 	resp, err := stub.Authenticate(context.Background(), &protoRequest)
 
 	if err != nil {
-		return api.AuthenticateResponse{}, httperr.New(http.StatusInternalServerError, err)
+		return api.AuthenticateResponse{}, httperr.FromGrpcError(err)
 	}
 
 	return api.AuthenticateResponse{
@@ -180,7 +180,7 @@ func (s *GatewayService) CreateApiToken(qp *query.Params, req *api.CreateApiToke
 	})
 
 	if err != nil {
-		return api.CreateApiTokenResponse{}, httperr.New(http.StatusInternalServerError, err)
+		return api.CreateApiTokenResponse{}, httperr.FromGrpcError(err)
 	}
 
 	return api.CreateApiTokenResponse{
