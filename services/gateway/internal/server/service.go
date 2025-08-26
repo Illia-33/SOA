@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	pb "soa-socialnetwork/services/accounts/proto"
@@ -14,17 +15,19 @@ import (
 )
 
 type GatewayService struct {
-	JwtVerifier soajwt.Verifier
+	jwtVerifier        soajwt.Verifier
+	accountsGrpcTarget string
 }
 
 func initService(cfg GatewayServiceConfig) GatewayService {
 	return GatewayService{
-		JwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
+		jwtVerifier:        soajwt.NewVerifier(cfg.JwtPublicKey),
+		accountsGrpcTarget: fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
 	}
 }
 
 func (c *GatewayService) createAccountsServiceStub(qp *query.Params) (pb.AccountsServiceClient, error) {
-	client, err := createGrpcClient("accounts-service:50051", qp)
+	client, err := createGrpcClient(c.accountsGrpcTarget, qp)
 	if err != nil {
 		return nil, err
 	}

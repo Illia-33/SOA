@@ -56,8 +56,25 @@ func extractConfig() (server.GatewayServiceConfig, error) {
 		return server.GatewayServiceConfig{}, err
 	}
 
+	accountsServiceHost, err := extractEnv("ACCOUNTS_SERVICE_HOST")
+	if err != nil {
+		return server.GatewayServiceConfig{}, err
+	}
+
+	accountsServicePortStr, err := extractEnv("ACCOUNTS_SERVICE_PORT")
+	if err != nil {
+		return server.GatewayServiceConfig{}, err
+	}
+
+	accountsServicePort, err := strconv.Atoi(accountsServicePortStr)
+	if err != nil {
+		return server.GatewayServiceConfig{}, fmt.Errorf("bad ACCOUNTS_SERVICE PORT: %s", accountsServicePortStr)
+	}
+
 	return server.GatewayServiceConfig{
-		JwtPublicKey: jwtPubKey,
+		JwtPublicKey:        jwtPubKey,
+		AccountsServiceHost: accountsServiceHost,
+		AccountsServicePort: accountsServicePort,
 	}, nil
 }
 

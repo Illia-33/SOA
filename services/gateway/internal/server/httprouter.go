@@ -61,7 +61,7 @@ func createRouter(serviceCtx *GatewayService) httpRouter {
 		))
 
 		idAuthGroup := idGroup.Group("")
-		idAuthGroup.Use(query.WithAuth(&serviceCtx.JwtVerifier))
+		idAuthGroup.Use(query.WithAuth(&serviceCtx.jwtVerifier))
 		idAuthGroup.PUT("", createHandler(
 			func(qp *query.Params, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
 				return emptyResponse{}, serviceCtx.EditProfileInfo(qp, r)
