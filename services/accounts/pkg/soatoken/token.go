@@ -22,7 +22,7 @@ func Parse(tokenStr string) (Token, error) {
 	}
 
 	var rawToken [48]byte
-	_, err := base64.StdEncoding.Decode(rawToken[:], []byte(tokenStr))
+	_, err := base64.RawStdEncoding.Decode(rawToken[:], []byte(tokenStr))
 	if err != nil {
 		return Token{}, err
 	}
