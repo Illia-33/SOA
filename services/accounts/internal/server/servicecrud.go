@@ -158,3 +158,22 @@ func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRe
 
 	return &pb.Empty{}, nil
 }
+
+func (s *AccountsService) ResolveProfileId(ctx context.Context, req *pb.ResolveProfileIdRequest) (*pb.ResolveProfileIdResponse, error) {
+	profileId := req.ProfileId
+	sql := `
+	SELECT account_id
+	FROM profiles
+	WHERE profile_id = $1;
+	`
+
+	row := s.dbPool.QueryRow(ctx, sql, profileId)
+	var accountId int
+	if err := row.Scan(&accountId); err != nil {
+		return nil, status.Error(codes.NotFound, "user not found")
+	}
+
+	return &pb.ResolveProfileIdResponse{
+		AccountId: int32(accountId),
+	}, nil
+}

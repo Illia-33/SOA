@@ -98,6 +98,14 @@ message ApiTokenValidity {
     }
 };
 
+message ResolveProfileIdRequest {
+    string ProfileId = 1;
+};
+
+message ResolveProfileIdResponse {
+    int32 AccountId = 1;
+};
+
 service AccountsService {
     rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
     rpc UnregisterUser (UnregisterUserRequest) returns (Empty);
@@ -106,4 +114,5 @@ service AccountsService {
     rpc Authenticate(AuthByPassword) returns (AuthResponse);
     rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse);
     rpc ValidateApiToken(ApiToken) returns (ApiTokenValidity);
+    rpc ResolveProfileId(ResolveProfileIdRequest) returns (ResolveProfileIdResponse);
 };
