@@ -368,7 +368,5 @@ func TestApiTokenTimeout(t *testing.T) {
 	resp := tryEditProfile(t, id, map[string]any{
 		"bio": "new bio",
 	}, soaTokenAuth(token))
-	b, err := io.ReadAll(resp.Body)
-	fmt.Println(string(b), err)
 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
