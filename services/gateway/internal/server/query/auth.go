@@ -12,7 +12,7 @@ import (
 )
 
 var jwt_regexp = regexp.MustCompile(`^Bearer [\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}\.[\-A-Za-z0-9\+\/_]*={0,3}$`)
-var soatoken_regexp = regexp.MustCompile(`^SoaToken [\-A-Za-z0-9\+\/_]={0,3}`)
+var soatoken_regexp = regexp.MustCompile(`^SoaToken [\-A-Za-z0-9\+\/_]={0,3}$`)
 
 func WithAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
