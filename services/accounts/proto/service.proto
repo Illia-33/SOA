@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package=".";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+message Profile {
+    string name = 1;
+    string surname = 2;
+    string profile_id = 3;
+    google.protobuf.Timestamp birthday = 4;
+    string bio = 5;
+};
+
+message Empty {
+};
+
+message RegisterUserRequest {
+    string login = 1;
+    string password = 2;
+    string email = 3;
+    string phone_number = 4;
+    string name = 5;
+    string surname = 6;
+};
+
+message RegisterUserResponse {
+    string profile_id = 1;
+};
+
+message UnregisterUserRequest {
+    string profile_id = 1;
+};
+
+message GetProfileRequest {
+    string profile_id = 1;
+};
+
+message GetProfileResponse {
+    Profile profile_data = 1;
+};
+
+message EditProfileRequest {
+    string profile_id = 1;
+    Profile edited_profile_data = 2;
+};
+
+message AuthByPassword {
+    oneof user_id {
+        string login = 1;
+        string email = 2;
+        string phone_number = 3;
+    }
+    string password = 4;
+};
+
+message AuthResponse {
+    string token = 1;
+};
+
+message AuthTokenParams {
+    bool read_access = 1;
+    bool write_access = 2;
+    google.protobuf.Duration ttl = 3;
+};
+
+message CreateApiTokenRequest {
+    AuthByPassword auth = 1;
+    AuthTokenParams params = 2;
+};
+
+message CreateApiTokenResponse {
+    string token = 1;
+    google.protobuf.Timestamp valid_until = 2;
+}
+
+message ApiToken {
+    string token = 1;
+};
+
+message ApiTokenValidity {
+    message Invalid {
+    };
+
+    message Valid {
+        bool read_access = 1;
+        bool write_access = 2;
+        google.protobuf.Timestamp valid_until = 3;
+        google.protobuf.Timestamp created_at = 4;
+    };
+
+    oneof result {
+        Invalid invalid = 1;
+        Valid valid = 2;
+    }
+};
+
+service AccountsService {
+    rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+    rpc UnregisterUser (UnregisterUserRequest) returns (Empty);
+    rpc GetProfile(GetProfileRequest) returns (Profile);
+    rpc EditProfile(EditProfileRequest) returns (Empty);
+    rpc Authenticate(AuthByPassword) returns (AuthResponse);
+    rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse);
+    rpc ValidateApiToken(ApiToken) returns (ApiTokenValidity);
+};
