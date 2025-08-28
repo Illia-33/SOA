@@ -23,3 +23,12 @@ func (o *Optional[T]) UnmarshalJSON(b []byte) error {
 func (o *Optional[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(o.Value)
 }
+
+func (o *Optional[T]) ToPointer() *T {
+	if !o.HasValue {
+		return nil
+	}
+
+	val := o.Value
+	return &val
+}

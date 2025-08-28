@@ -52,3 +52,33 @@ type CreateApiTokenRequest struct {
 type CreateApiTokenResponse struct {
 	Token string `json:"token"`
 }
+
+type GetPageSettingsResponse struct {
+	VisibleForUnauthorized bool `json:"visible_for_unauthorized"`
+	CommentsEnabled        bool `json:"comments_enabled"`
+	AnyoneCanPost          bool `json:"anyone_can_post"`
+}
+
+type EditPageSettingsRequest struct {
+	VisibleForUnauthorized types.Optional[bool] `json:"visible_for_unauthorized"`
+	CommentsEnabled        types.Optional[bool] `json:"comments_enabled"`
+	AnyoneCanPost          types.Optional[bool] `json:"anyone_can_post"`
+}
+
+type NewPostRequest struct {
+	Text   string                `json:"text"`
+	Repost types.Optional[int32] `json:"repost"`
+}
+
+type NewPostResponse struct {
+	PostId int32 `json:"post_id"`
+}
+
+type NewCommentRequest struct {
+	Content        string                `json:"content"`
+	ReplyCommentId types.Optional[int32] `json:"reply_comment_id"`
+}
+
+type NewCommentResponse struct {
+	CommentId int32 `json:"comment_id"`
+}

@@ -60,19 +60,56 @@ func newHttpRouter(service *GatewayService) httpRouter {
 			},
 		))
 
-		idAuthGroup := idGroup.Group("")
-		idAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
-		idAuthGroup.PUT("", createHandler(
-			func(qp *query.Params, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, service.EditProfileInfo(qp, r)
-			},
-		))
+		{
+			idAuthGroup := idGroup.Group("")
+			idAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
+			idAuthGroup.PUT("", createHandler(
+				func(qp *query.Params, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
+					return emptyResponse{}, service.EditProfileInfo(qp, r)
+				},
+			))
 
-		idAuthGroup.DELETE("", createHandler(
-			func(qp *query.Params, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, service.DeleteProfile(qp)
-			},
-		))
+			idAuthGroup.DELETE("", createHandler(
+				func(qp *query.Params, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
+					return emptyResponse{}, service.DeleteProfile(qp)
+				},
+			))
+		}
+
+		pageGroup := idGroup.Group("/page")
+		{
+			pageGroup.GET("/settings", createHandler(
+				func(qp *query.Params, r *jsonextractor.EmptyRequest) (api.GetPageSettingsResponse, httperr.Err) {
+					return service.GetPageSettings(qp)
+				},
+			))
+		}
+
+		{
+			authPageGroup := pageGroup.Group("")
+			authPageGroup.Use(query.WithAuth(&service.jwtVerifier))
+			authPageGroup.PUT("/settings", createHandler(
+				func(qp *query.Params, r *api.EditPageSettingsRequest) (emptyResponse, httperr.Err) {
+					return emptyResponse{}, service.EditPageSettings(qp, r)
+				},
+			))
+
+			authPageGroup.POST("", createHandler(
+				func(qp *query.Params, r *api.NewPostRequest) (api.NewPostResponse, httperr.Err) {
+					return service.NewPost(qp, r)
+				},
+			))
+
+			{
+				postGroup := authPageGroup.Group("/:post_id")
+				postGroup.Use(query.WithPostId())
+				postGroup.POST("/comments", createHandler(
+					func(qp *query.Params, r *api.NewCommentRequest) (api.NewCommentResponse, httperr.Err) {
+						return service.NewComment(qp, r)
+					},
+				))
+			}
+		}
 	}
 
 	restApi.POST("/auth", createHandler(
