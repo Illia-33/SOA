@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package=".";
+
+message Empty{};
+
+message GetPageSettingsRequest {
+    int32 AccountId = 1;
+}
+
+message GetPageSettingsResponse {
+    bool VisibleForUnauthorized = 1;
+    bool CommentsEnabled = 2;
+    bool AnyoneCanPost = 3;
+};
+
+message EditPageSettingsRequest {
+    int32 AccountId = 1;
+    optional bool VisibleForUnauthorized = 2;
+    optional bool CommentsEnabled = 3;
+    optional bool AnyoneCanPost = 4;
+};
+
+message NewPostRequest {
+    int32 PageAccountId = 1;
+    string Text = 2;
+    optional int32 Repost = 3;
+};
+
+message NewPostResponse {
+    int32 PostId = 1;
+};
+
+message NewCommentRequest {
+    int32 PostId = 1;
+    string Content = 2;
+    optional int32 ReplyCommentId = 3;
+};
+
+message NewCommentResponse {
+    int32 CommentId = 1;
+};
+
+service PostsService {
+    rpc GetPageSettings(GetPageSettingsRequest) returns (GetPageSettingsResponse);
+    rpc EditPageSettings(EditPageSettingsRequest) returns (Empty);
+    rpc NewPost(NewPostRequest) returns (NewPostResponse);
+    rpc NewComment(NewCommentRequest) returns (NewCommentResponse);
+};
