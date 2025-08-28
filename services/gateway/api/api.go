@@ -2,6 +2,8 @@ package api
 
 import "soa-socialnetwork/services/gateway/pkg/types"
 
+type Empty struct{}
+
 type RegisterProfileRequest struct {
 	Login       types.Login       `json:"login"`
 	Password    types.Password    `json:"password"`

@@ -16,8 +16,6 @@ type httpRouter struct {
 
 type requestPerformer[TRequest any, TResponse any] func(*query.Params, *TRequest) (TResponse, httperr.Err)
 
-type emptyResponse struct{}
-
 func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequest, TResponse]) func(*gin.Context) {
 	extractor := jsonextractor.New()
 	return func(ctx *gin.Context) {
@@ -55,7 +53,7 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		idGroup := profileGroup.Group("/:profile_id")
 		idGroup.Use(query.WithProfileId())
 		idGroup.GET("", createHandler(
-			func(qp *query.Params, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
+			func(qp *query.Params, r *api.Empty) (api.GetProfileResponse, httperr.Err) {
 				return service.GetProfileInfo(qp)
 			},
 		))
@@ -64,14 +62,14 @@ func newHttpRouter(service *GatewayService) httpRouter {
 			idAuthGroup := idGroup.Group("")
 			idAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
 			idAuthGroup.PUT("", createHandler(
-				func(qp *query.Params, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
-					return emptyResponse{}, service.EditProfileInfo(qp, r)
+				func(qp *query.Params, r *api.EditProfileRequest) (api.Empty, httperr.Err) {
+					return api.Empty{}, service.EditProfileInfo(qp, r)
 				},
 			))
 
 			idAuthGroup.DELETE("", createHandler(
-				func(qp *query.Params, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
-					return emptyResponse{}, service.DeleteProfile(qp)
+				func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+					return api.Empty{}, service.DeleteProfile(qp)
 				},
 			))
 		}
@@ -79,7 +77,7 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		pageGroup := idGroup.Group("/page")
 		{
 			pageGroup.GET("/settings", createHandler(
-				func(qp *query.Params, r *jsonextractor.EmptyRequest) (api.GetPageSettingsResponse, httperr.Err) {
+				func(qp *query.Params, r *api.Empty) (api.GetPageSettingsResponse, httperr.Err) {
 					return service.GetPageSettings(qp)
 				},
 			))
@@ -89,8 +87,8 @@ func newHttpRouter(service *GatewayService) httpRouter {
 			authPageGroup := pageGroup.Group("")
 			authPageGroup.Use(query.WithAuth(&service.jwtVerifier))
 			authPageGroup.PUT("/settings", createHandler(
-				func(qp *query.Params, r *api.EditPageSettingsRequest) (emptyResponse, httperr.Err) {
-					return emptyResponse{}, service.EditPageSettings(qp, r)
+				func(qp *query.Params, r *api.EditPageSettingsRequest) (api.Empty, httperr.Err) {
+					return api.Empty{}, service.EditPageSettings(qp, r)
 				},
 			))
 

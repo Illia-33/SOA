@@ -10,8 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type EmptyRequest struct{}
-
 type JsonExtractor struct {
 }
 
@@ -41,7 +39,7 @@ func (j *JsonExtractor) bindJSON(r any, ctx *gin.Context) error {
 	case *api.EditPageSettingsRequest, *api.NewPostRequest, *api.NewCommentRequest:
 		return ctx.BindJSON(v)
 
-	case *EmptyRequest:
+	case *api.Empty:
 		return nil
 
 	default:
