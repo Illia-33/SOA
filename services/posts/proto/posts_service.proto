@@ -53,6 +53,20 @@ message GetPostRequest {
     int32 PostId = 1;
 }
 
+// EditPost
+
+message EditPostRequest {
+    int32 PostId = 1;
+    optional string Text = 2;
+    optional bool Pinned = 3;
+}
+
+// DeletePost
+
+message DeletePostRequest {
+    int32 PostId = 1;
+}
+
 // GetPosts
 
 message GetPostsRequest {
@@ -84,6 +98,8 @@ service PostsService {
     rpc NewPost(NewPostRequest) returns (NewPostResponse);
     rpc GetPost(GetPostRequest) returns (Post);
     rpc GetPosts(GetPostsRequest) returns (GetPostsResponse);
+    rpc EditPost(EditPostRequest) returns (Empty);
+    rpc DeletePost(DeletePostRequest) returns (Empty);
     
     rpc NewComment(NewCommentRequest) returns (NewCommentResponse);
 };

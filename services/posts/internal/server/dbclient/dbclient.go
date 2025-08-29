@@ -12,6 +12,8 @@ type DatabaseClient interface {
 	NewPost(context.Context, req.NewPostRequest) (req.NewPostResponse, error)
 	GetPost(context.Context, req.GetPostRequest) (req.GetPostResponse, error)
 	GetPosts(context.Context, req.GetPostsRequest) (req.GetPostsResponse, error)
+	EditPost(context.Context, req.EditPostRequest) error
+	DeletePost(context.Context, req.DeletePostRequest) error
 
 	NewComment(context.Context, req.NewCommentRequest) (req.NewCommentResponse, error)
 }

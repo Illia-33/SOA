@@ -27,16 +27,21 @@ func (PostId) isPageEntityId() {}
 
 type PaginationToken string
 
+// GetPage
+
 type GetPageDataRequest struct {
 	EntityId PageEntityId
 }
 
 type GetPageDataResponse struct {
 	Id                     types.PageId
+	AccountId              types.AccountId
 	VisibleForUnauthorized bool
 	CommentsEnabled        bool
 	AnyoneCanPost          bool
 }
+
+// NewPost
 
 type NewPostRequest struct {
 	PageId   types.PageId
@@ -48,6 +53,8 @@ type NewPostResponse struct {
 	Id types.PostId
 }
 
+// GetPost
+
 type GetPostRequest struct {
 	PostId types.PostId
 }
@@ -55,6 +62,8 @@ type GetPostRequest struct {
 type GetPostResponse struct {
 	Post types.Post
 }
+
+// GetPosts
 
 type GetPostsRequest struct {
 	PageId    types.PageId
@@ -66,6 +75,8 @@ type GetPostsResponse struct {
 	NextPageToken PaginationToken
 }
 
+// NewComment
+
 type NewCommentRequest struct {
 	PostId         types.PostId
 	AuthorId       types.AccountId
@@ -75,4 +86,18 @@ type NewCommentRequest struct {
 
 type NewCommentResponse struct {
 	Id types.CommentId
+}
+
+// EditPost
+
+type EditPostRequest struct {
+	PostId types.PostId
+	Text   types.Option[types.Text]
+	Pinned types.Option[bool]
+}
+
+// DeletePost
+
+type DeletePostRequest struct {
+	PostId types.PostId
 }

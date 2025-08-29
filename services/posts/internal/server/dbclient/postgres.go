@@ -13,6 +13,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type PostgresConfig struct {
@@ -50,9 +52,9 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDat
 			`
 
 			row := p.connPool.QueryRow(ctx, sql, accountId)
-			err = row.Scan(&resp.Id, &resp.AnyoneCanPost, &resp.CommentsEnabled, &resp.VisibleForUnauthorized)
-			if err == nil {
-				// ok, returning
+			err = row.Scan(&resp.Id, &resp.VisibleForUnauthorized, &resp.CommentsEnabled, &resp.AnyoneCanPost)
+			if err == nil { // ok, returning
+				resp.AccountId = dbTypes.AccountId(accountId)
 				return
 			}
 
@@ -64,7 +66,10 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDat
 			`
 
 			row = p.connPool.QueryRow(ctx, sql, accountId)
-			err = row.Scan(&resp.Id, &resp.AnyoneCanPost, &resp.CommentsEnabled, &resp.VisibleForUnauthorized)
+			err = row.Scan(&resp.Id, &resp.VisibleForUnauthorized, &resp.CommentsEnabled, &resp.AnyoneCanPost)
+			if err == nil {
+				resp.AccountId = dbTypes.AccountId(accountId)
+			}
 			return
 		}
 
@@ -72,13 +77,14 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDat
 		{
 			pageId := id
 			sql := `
-			SELECT id, visible_for_unauthorized, comments_enabled, anyone_can_post
+			SELECT account_id, visible_for_unauthorized, comments_enabled, anyone_can_post
 			FROM pages
 			WHERE id = $1;
 			`
 
 			row := p.connPool.QueryRow(ctx, sql, pageId)
-			err = row.Scan(&resp.Id, &resp.AnyoneCanPost, &resp.CommentsEnabled, &resp.VisibleForUnauthorized)
+			err = row.Scan(&resp.AccountId, &resp.VisibleForUnauthorized, &resp.CommentsEnabled, &resp.AnyoneCanPost)
+			resp.Id = dbTypes.PageId(pageId)
 			return
 		}
 
@@ -86,7 +92,7 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDat
 		{
 			postId := id
 			sql := `
-			SELECT id, visible_for_unauthorized, comments_enabled, anyone_can_post
+			SELECT id, account_id, visible_for_unauthorized, comments_enabled, anyone_can_post
 			FROM pages
 			WHERE id IN (
 				SELECT page_id
@@ -96,7 +102,7 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDat
 			`
 
 			row := p.connPool.QueryRow(ctx, sql, postId)
-			err = row.Scan(&resp.Id, &resp.AnyoneCanPost, &resp.CommentsEnabled, &resp.VisibleForUnauthorized)
+			err = row.Scan(&resp.Id, &resp.AccountId, &resp.VisibleForUnauthorized, &resp.CommentsEnabled, &resp.AnyoneCanPost)
 			return
 		}
 	}
@@ -253,6 +259,71 @@ func (p *PostgresDbClient) NewComment(ctx context.Context, req dbReq.NewCommentR
 	row := p.connPool.QueryRow(ctx, sql, req.PostId, req.AuthorId, req.Content, pgReplyCommentId)
 	err = row.Scan(&resp.Id)
 	return
+}
+
+func (p *PostgresDbClient) EditPost(ctx context.Context, req dbReq.EditPostRequest) error {
+	sql := `
+	WITH affected_rows AS (
+		UPDATE posts
+		SET
+			text_content = COALESCE($1, text_content),
+			pinned = COALESCE($2, pinned)
+		WHERE id = $3
+		RETURNING 1
+	)
+	SELECT count(*) FROM affected_rows;
+	`
+	pgTextContent := pgtype.Text{
+		String: string(req.Text.Value),
+		Valid:  req.Text.HasValue,
+	}
+	pgPinned := pgtype.Bool{
+		Bool:  req.Pinned.Value,
+		Valid: req.Pinned.HasValue,
+	}
+
+	row := p.connPool.QueryRow(ctx, sql, pgTextContent, pgPinned, req.PostId)
+	var countAffected int
+	if err := row.Scan(&countAffected); err != nil {
+		return err
+	}
+
+	if countAffected == 0 {
+		return status.Error(codes.NotFound, "post not found")
+	}
+
+	if countAffected != 1 {
+		log.Printf("warning: more than 1 post with id = %d", req.PostId)
+	}
+
+	return nil
+}
+
+func (p *PostgresDbClient) DeletePost(ctx context.Context, req dbReq.DeletePostRequest) error {
+	sql := `
+	WITH affected_rows AS (
+		DELETE FROM posts
+		WHERE id = $1
+		RETURNING 1
+	)
+	SELECT count(*) FROM affected_rows;
+	`
+
+	row := p.connPool.QueryRow(ctx, sql, req.PostId)
+	var countAffected int
+	if err := row.Scan(&countAffected); err != nil {
+		return err
+	}
+
+	if countAffected == 0 {
+		return status.Error(codes.NotFound, "post not found")
+	}
+
+	if countAffected != 1 {
+		log.Printf("warning: more than 1 post with id = %d", req.PostId)
+	}
+
+	return nil
 }
 
 type pgPostsPagiToken struct {

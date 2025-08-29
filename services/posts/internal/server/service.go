@@ -4,7 +4,7 @@ import (
 	"context"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	db "soa-socialnetwork/services/posts/internal/server/dbclient"
-	dbreq "soa-socialnetwork/services/posts/internal/server/dbclient/requests"
+	dbReq "soa-socialnetwork/services/posts/internal/server/dbclient/requests"
 	dbt "soa-socialnetwork/services/posts/internal/server/dbclient/types"
 	"soa-socialnetwork/services/posts/internal/server/interceptors"
 	pb "soa-socialnetwork/services/posts/proto"
@@ -16,7 +16,7 @@ import (
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
-	dbCliennt   db.DatabaseClient
+	dbClient    db.DatabaseClient
 	jwtVerifier soajwt.Verifier
 }
 
@@ -33,7 +33,7 @@ func newPostsService(cfg PostsServiceConfig) (PostsService, error) {
 	}
 
 	return PostsService{
-		dbCliennt:   dbc,
+		dbClient:    dbc,
 		jwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
 	}, nil
 }
@@ -48,15 +48,15 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
-	pageData, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
-		EntityId: dbreq.AccountId(req.AccountId),
+	pageData, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+		EntityId: dbReq.AccountId(req.AccountId),
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dbCliennt.EditPageSettings(ctx, dbreq.EditPageSettingsRequest{
+	err = s.dbClient.EditPageSettings(ctx, dbReq.EditPageSettingsRequest{
 		PageId:                 pageData.Id,
 		VisibleForUnauthorized: dbt.OptionFromPtr(req.VisibleForUnauthorized),
 		CommentsEnabled:        dbt.OptionFromPtr(req.CommentsEnabled),
@@ -71,8 +71,8 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 }
 
 func (s *PostsService) GetPageSettings(ctx context.Context, req *pb.GetPageSettingsRequest) (*pb.GetPageSettingsResponse, error) {
-	st, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
-		EntityId: dbreq.AccountId(req.AccountId),
+	st, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+		EntityId: dbReq.AccountId(req.AccountId),
 	})
 
 	if err != nil {
@@ -93,8 +93,8 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	authorId := authorIdVal.(dbt.AccountId)
 
-	pageData, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
-		EntityId: dbreq.AccountId(req.PageAccountId),
+	pageData, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+		EntityId: dbReq.AccountId(req.PageAccountId),
 	})
 
 	if err != nil {
@@ -107,7 +107,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 		}
 	}
 
-	r, err := s.dbCliennt.NewPost(ctx, dbreq.NewPostRequest{
+	dbResp, err := s.dbClient.NewPost(ctx, dbReq.NewPostRequest{
 		PageId:   pageData.Id,
 		AuthorId: authorId,
 		Content: dbt.PostContent{
@@ -121,7 +121,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 
 	return &pb.NewPostResponse{
-		PostId: int32(r.Id),
+		PostId: int32(dbResp.Id),
 	}, nil
 }
 
@@ -132,8 +132,8 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	authorId := authorIdVal.(dbt.AccountId)
 
-	pageData, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
-		EntityId: dbreq.PostId(req.PostId),
+	pageData, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+		EntityId: dbReq.PostId(req.PostId),
 	})
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 		return nil, status.Error(codes.PermissionDenied, "comments prohibited")
 	}
 
-	r, err := s.dbCliennt.NewComment(ctx, dbreq.NewCommentRequest{
+	dbResp, err := s.dbClient.NewComment(ctx, dbReq.NewCommentRequest{
 		PostId:         dbt.PostId(req.PostId),
 		AuthorId:       authorId,
 		Content:        dbt.Text(req.Content),
@@ -154,13 +154,13 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 
 	return &pb.NewCommentResponse{
-		CommentId: int32(r.Id),
+		CommentId: int32(dbResp.Id),
 	}, nil
 }
 
 func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
-	pageData, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
-		EntityId: dbreq.PostId(req.PostId),
+	pageData, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+		EntityId: dbReq.PostId(req.PostId),
 	})
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
 	}
 
-	r, err := s.dbCliennt.GetPost(ctx, dbreq.GetPostRequest{
+	dbResp, err := s.dbClient.GetPost(ctx, dbReq.GetPostRequest{
 		PostId: dbt.PostId(req.PostId),
 	})
 
@@ -180,17 +180,17 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 	}
 
 	return &pb.Post{
-		Id:              int32(r.Post.Id),
-		AuthorAccountId: int32(r.Post.AuthorAccountId),
-		Text:            string(r.Post.Content.Text),
-		SourcePostId:    (*int32)(r.Post.Content.SourcePostId.ToPointer()),
-		Pinned:          r.Post.Pinned,
+		Id:              int32(dbResp.Post.Id),
+		AuthorAccountId: int32(dbResp.Post.AuthorAccountId),
+		Text:            string(dbResp.Post.Content.Text),
+		SourcePostId:    (*int32)(dbResp.Post.Content.SourcePostId.ToPointer()),
+		Pinned:          dbResp.Post.Pinned,
 	}, nil
 }
 
 func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*pb.GetPostsResponse, error) {
-	pageData, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
-		EntityId: dbreq.AccountId(req.PageAccountId),
+	pageData, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+		EntityId: dbReq.AccountId(req.PageAccountId),
 	})
 	if err != nil {
 		return nil, err
@@ -201,16 +201,16 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
 	}
 
-	r, err := s.dbCliennt.GetPosts(ctx, dbreq.GetPostsRequest{
+	dbResp, err := s.dbClient.GetPosts(ctx, dbReq.GetPostsRequest{
 		PageId:    pageData.Id,
-		PageToken: dbreq.PaginationToken(req.PageToken),
+		PageToken: dbReq.PaginationToken(req.PageToken),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	posts := make([]*pb.Post, len(r.Posts))
-	for i, post := range r.Posts {
+	posts := make([]*pb.Post, len(dbResp.Posts))
+	for i, post := range dbResp.Posts {
 		posts[i] = &pb.Post{
 			Id:              int32(post.Id),
 			AuthorAccountId: int32(post.AuthorAccountId),
@@ -222,6 +222,78 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 
 	return &pb.GetPostsResponse{
 		Posts:         posts,
-		NextPageToken: string(r.NextPageToken),
+		NextPageToken: string(dbResp.NextPageToken),
 	}, nil
+}
+
+func (s *PostsService) EditPost(ctx context.Context, req *pb.EditPostRequest) (*pb.Empty, error) {
+	authorizedId := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
+	if authorizedId == nil {
+		return nil, status.Error(codes.PermissionDenied, "permission denied")
+	}
+
+	postData, err := s.dbClient.GetPost(ctx, dbReq.GetPostRequest{
+		PostId: dbt.PostId(req.PostId),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if postData.Post.AuthorAccountId != authorizedId.(dbt.AccountId) {
+		return nil, status.Error(codes.PermissionDenied, "permission denied")
+	}
+
+	if (req.Text == nil || *req.Text == string(postData.Post.Content.Text)) && (req.Pinned == nil || postData.Post.Pinned == *req.Pinned) {
+		return &pb.Empty{}, nil
+	}
+
+	err = s.dbClient.EditPost(ctx, dbReq.EditPostRequest{
+		PostId: dbt.PostId(req.PostId),
+		Text:   dbt.OptionFromPtr((*dbt.Text)(req.Text)),
+		Pinned: dbt.OptionFromPtr(req.Pinned),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}
+
+func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb.Empty, error) {
+	authorizedIdVal := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
+	if authorizedIdVal == nil {
+		return nil, status.Error(codes.PermissionDenied, "permission denied")
+	}
+	authorizedId := authorizedIdVal.(dbt.AccountId)
+
+	postData, err := s.dbClient.GetPost(ctx, dbReq.GetPostRequest{
+		PostId: dbt.PostId(req.PostId),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if postData.Post.AuthorAccountId != authorizedId {
+		page, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+			EntityId: dbReq.PageId(postData.Post.PageId),
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if page.AccountId != authorizedId {
+			return nil, status.Error(codes.PermissionDenied, "permission denied")
+		}
+	}
+
+	err = s.dbClient.DeletePost(ctx, dbReq.DeletePostRequest{
+		PostId: dbt.PostId(req.PostId),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, err
 }
