@@ -81,6 +81,11 @@ func newHttpRouter(service *GatewayService) httpRouter {
 					return service.GetPageSettings(qp)
 				},
 			))
+			pageGroup.GET("/posts", createHandler(
+				func(qp *query.Params, r *api.GetPostsRequest) (api.GetPostsResponse, httperr.Err) {
+					return service.GetPosts(qp, r)
+				},
+			))
 		}
 
 		{
@@ -103,8 +108,25 @@ func newHttpRouter(service *GatewayService) httpRouter {
 	{
 		postGroup := restApi.Group("/post/:post_id")
 		postGroup.Use(query.WithPostId())
+		postGroup.GET("", createHandler(
+			func(qp *query.Params, r *api.Empty) (api.Post, httperr.Err) {
+				return service.GetPost(qp)
+			},
+		))
+
 		postAuthGroup := postGroup.Group("")
 		postAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
+		postAuthGroup.PUT("", createHandler(
+			func(qp *query.Params, r *api.EditPostRequest) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.EditPost(qp, r)
+			},
+		))
+		postAuthGroup.DELETE("", createHandler(
+			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.DeletePost(qp)
+			},
+		))
+
 		postAuthGroup.POST("/comments", createHandler(
 			func(qp *query.Params, r *api.NewCommentRequest) (api.NewCommentResponse, httperr.Err) {
 				return service.NewComment(qp, r)

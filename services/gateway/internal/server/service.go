@@ -10,6 +10,7 @@ import (
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/query"
 	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
+	"soa-socialnetwork/services/gateway/pkg/types"
 	postsPb "soa-socialnetwork/services/posts/proto"
 
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -287,6 +288,95 @@ func (s *GatewayService) NewPost(qp *query.Params, req *api.NewPostRequest) (api
 	return api.NewPostResponse{
 		PostId: resp.PostId,
 	}, httperr.Ok()
+}
+
+func postFromProto(proto *postsPb.Post) api.Post {
+	return api.Post{
+		Id:           proto.Id,
+		AuthorId:     proto.AuthorAccountId,
+		Text:         proto.Text,
+		SourcePostId: types.OptionalFromPointer(proto.SourcePostId),
+		Pinned:       proto.Pinned,
+	}
+}
+
+func (s *GatewayService) GetPost(qp *query.Params) (api.Post, httperr.Err) {
+	stub, err := s.createPostsStub(qp)
+	if err != nil {
+		return api.Post{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := stub.GetPost(context.Background(), &postsPb.GetPostRequest{
+		PostId: qp.PostId,
+	})
+	if err != nil {
+		return api.Post{}, httperr.FromGrpcError(err)
+	}
+
+	return postFromProto(resp), httperr.Ok()
+}
+
+func (s *GatewayService) GetPosts(qp *query.Params, req *api.GetPostsRequest) (api.GetPostsResponse, httperr.Err) {
+	stub, err := s.createPostsStub(qp)
+	if err != nil {
+		return api.GetPostsResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	accountId, accErr := s.resolveProfileId(qp, qp.ProfileId)
+	if !accErr.IsOk() {
+		return api.GetPostsResponse{}, accErr
+	}
+
+	resp, err := stub.GetPosts(context.Background(), &postsPb.GetPostsRequest{
+		PageAccountId: accountId,
+	})
+	if err != nil {
+		return api.GetPostsResponse{}, httperr.FromGrpcError(err)
+	}
+
+	posts := make([]api.Post, len(resp.Posts))
+	for i, p := range resp.Posts {
+		posts[i] = postFromProto(p)
+	}
+
+	return api.GetPostsResponse{
+		Posts:         posts,
+		NextPageToken: resp.NextPageToken,
+	}, httperr.Ok()
+}
+
+func (s *GatewayService) EditPost(qp *query.Params, req *api.EditPostRequest) httperr.Err {
+	stub, err := s.createPostsStub(qp)
+	if err != nil {
+		return httperr.New(http.StatusInternalServerError, err)
+	}
+
+	_, err = stub.EditPost(context.Background(), &postsPb.EditPostRequest{
+		PostId: qp.PostId,
+		Text:   req.Text.ToPointer(),
+		Pinned: req.Pinned.ToPointer(),
+	})
+	if err != nil {
+		return httperr.FromGrpcError(err)
+	}
+
+	return httperr.Ok()
+}
+
+func (s *GatewayService) DeletePost(qp *query.Params) httperr.Err {
+	stub, err := s.createPostsStub(qp)
+	if err != nil {
+		return httperr.New(http.StatusInternalServerError, err)
+	}
+
+	_, err = stub.DeletePost(context.Background(), &postsPb.DeletePostRequest{
+		PostId: qp.PostId,
+	})
+	if err != nil {
+		return httperr.FromGrpcError(err)
+	}
+
+	return httperr.Ok()
 }
 
 func (s *GatewayService) NewComment(qp *query.Params, req *api.NewCommentRequest) (api.NewCommentResponse, httperr.Err) {

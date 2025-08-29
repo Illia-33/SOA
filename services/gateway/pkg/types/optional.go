@@ -32,3 +32,14 @@ func (o *Optional[T]) ToPointer() *T {
 	val := o.Value
 	return &val
 }
+
+func OptionalFromPointer[T any](val *T) Optional[T] {
+	if val == nil {
+		return Optional[T]{}
+	}
+
+	return Optional[T]{
+		Value:    *val,
+		HasValue: true,
+	}
+}

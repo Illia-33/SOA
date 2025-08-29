@@ -76,6 +76,28 @@ type NewPostResponse struct {
 	PostId int32 `json:"post_id"`
 }
 
+type Post struct {
+	Id           int32                 `json:"id"`
+	AuthorId     int32                 `json:"author_id"`
+	Text         string                `json:"text"`
+	SourcePostId types.Optional[int32] `json:"source_post_id"`
+	Pinned       bool                  `json:"pinned"`
+}
+
+type GetPostsRequest struct {
+	PageToken string `json:"page_token"`
+}
+
+type GetPostsResponse struct {
+	Posts         []Post `json:"posts"`
+	NextPageToken string `json:"next_page_token"`
+}
+
+type EditPostRequest struct {
+	Text   types.Optional[string] `json:"text"`
+	Pinned types.Optional[bool]   `json:"pinned"`
+}
+
 type NewCommentRequest struct {
 	Content        string                `json:"content"`
 	ReplyCommentId types.Optional[int32] `json:"reply_comment_id"`
