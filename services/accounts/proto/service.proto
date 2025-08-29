@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto;
+package accounts_proto;
 
 option go_package=".";
 
@@ -99,11 +99,11 @@ message ApiTokenValidity {
 };
 
 message ResolveProfileIdRequest {
-    string ProfileId = 1;
+    string profile_id = 1;
 };
 
 message ResolveProfileIdResponse {
-    int32 AccountId = 1;
+    int32 account_id = 1;
 };
 
 service AccountsService {

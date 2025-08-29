@@ -12,6 +12,7 @@ const (
 
 type Params struct {
 	ProfileId string
+	PostId    int32
 	AuthToken string
 	AuthKind  AuthTokenKind
 }
