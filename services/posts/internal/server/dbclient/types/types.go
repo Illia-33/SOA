@@ -18,14 +18,14 @@ type PageData struct {
 type Text string
 
 type PostContent struct {
-	TextContent  Text
+	Text         Text
 	SourcePostId Option[PostId]
 }
 
-type PostData struct {
+type Post struct {
 	Id              PostId
 	PageId          PageId
-	AuthorAccountId Option[AccountId]
+	AuthorAccountId AccountId
 	Content         PostContent
 	Pinned          bool
 	CreatedAt       time.Time
@@ -43,6 +43,15 @@ type CommentData struct {
 type Option[T any] struct {
 	Value    T
 	HasValue bool
+}
+
+func (o *Option[T]) ToPointer() *T {
+	if !o.HasValue {
+		return nil
+	}
+
+	v := o.Value
+	return &v
 }
 
 func Some[T any](v T) Option[T] {

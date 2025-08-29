@@ -6,6 +6,16 @@ option go_package=".";
 
 message Empty{};
 
+message Post {
+    int32 Id = 1;
+    int32 AuthorAccountId = 2;
+    string Text = 3;
+    optional int32 SourcePostId = 4;
+    bool Pinned = 5;
+}
+
+// GetPageSettings
+
 message GetPageSettingsRequest {
     int32 AccountId = 1;
 }
@@ -16,12 +26,16 @@ message GetPageSettingsResponse {
     bool AnyoneCanPost = 3;
 };
 
+// EditPageSettings
+
 message EditPageSettingsRequest {
     int32 AccountId = 1;
     optional bool VisibleForUnauthorized = 2;
     optional bool CommentsEnabled = 3;
     optional bool AnyoneCanPost = 4;
 };
+
+// NewPost
 
 message NewPostRequest {
     int32 PageAccountId = 1;
@@ -32,6 +46,26 @@ message NewPostRequest {
 message NewPostResponse {
     int32 PostId = 1;
 };
+
+// GetPost
+
+message GetPostRequest {
+    int32 PostId = 1;
+}
+
+// GetPosts
+
+message GetPostsRequest {
+    int32 PageAccountId = 1;
+    string PageToken = 2;
+}
+
+message GetPostsResponse {
+    repeated Post Posts = 1;
+    string NextPageToken = 2;
+}
+
+// NewComment
 
 message NewCommentRequest {
     int32 PostId = 1;
@@ -46,6 +80,10 @@ message NewCommentResponse {
 service PostsService {
     rpc GetPageSettings(GetPageSettingsRequest) returns (GetPageSettingsResponse);
     rpc EditPageSettings(EditPageSettingsRequest) returns (Empty);
+
     rpc NewPost(NewPostRequest) returns (NewPostResponse);
+    rpc GetPost(GetPostRequest) returns (Post);
+    rpc GetPosts(GetPostsRequest) returns (GetPostsResponse);
+    
     rpc NewComment(NewCommentRequest) returns (NewCommentResponse);
 };

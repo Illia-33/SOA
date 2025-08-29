@@ -111,7 +111,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 		PageId:   pageData.Id,
 		AuthorId: authorId,
 		Content: dbt.PostContent{
-			TextContent:  dbt.Text(req.Text),
+			Text:         dbt.Text(req.Text),
 			SourcePostId: dbt.OptionFromPtr((*dbt.PostId)(req.Repost)),
 		},
 	})
@@ -155,5 +155,73 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 
 	return &pb.NewCommentResponse{
 		CommentId: int32(r.Id),
+	}, nil
+}
+
+func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
+	pageData, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
+		EntityId: dbreq.PostId(req.PostId),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	authorizedId := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
+	if authorizedId == nil && !pageData.VisibleForUnauthorized {
+		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
+	}
+
+	r, err := s.dbCliennt.GetPost(ctx, dbreq.GetPostRequest{
+		PostId: dbt.PostId(req.PostId),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Post{
+		Id:              int32(r.Post.Id),
+		AuthorAccountId: int32(r.Post.AuthorAccountId),
+		Text:            string(r.Post.Content.Text),
+		SourcePostId:    (*int32)(r.Post.Content.SourcePostId.ToPointer()),
+		Pinned:          r.Post.Pinned,
+	}, nil
+}
+
+func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*pb.GetPostsResponse, error) {
+	pageData, err := s.dbCliennt.GetPageData(ctx, dbreq.GetPageDataRequest{
+		EntityId: dbreq.AccountId(req.PageAccountId),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	authorizedId := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
+	if authorizedId == nil && !pageData.VisibleForUnauthorized {
+		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
+	}
+
+	r, err := s.dbCliennt.GetPosts(ctx, dbreq.GetPostsRequest{
+		PageId:    pageData.Id,
+		PageToken: dbreq.PaginationToken(req.PageToken),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	posts := make([]*pb.Post, len(r.Posts))
+	for i, post := range r.Posts {
+		posts[i] = &pb.Post{
+			Id:              int32(post.Id),
+			AuthorAccountId: int32(post.AuthorAccountId),
+			Text:            string(post.Content.Text),
+			SourcePostId:    (*int32)(post.Content.SourcePostId.ToPointer()),
+			Pinned:          post.Pinned,
+		}
+	}
+
+	return &pb.GetPostsResponse{
+		Posts:         posts,
+		NextPageToken: string(r.NextPageToken),
 	}, nil
 }

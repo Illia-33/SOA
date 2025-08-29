@@ -2,10 +2,14 @@ package dbclient
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	dbreq "soa-socialnetwork/services/posts/internal/server/dbclient/requests"
+	dbReq "soa-socialnetwork/services/posts/internal/server/dbclient/requests"
+	dbTypes "soa-socialnetwork/services/posts/internal/server/dbclient/types"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,9 +38,9 @@ func NewPostgresDbClient(cfg PostgresConfig) (*PostgresDbClient, error) {
 	}, nil
 }
 
-func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbreq.GetPageDataRequest) (resp dbreq.GetPageDataResponse, err error) {
+func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDataRequest) (resp dbReq.GetPageDataResponse, err error) {
 	switch id := req.EntityId.(type) {
-	case dbreq.AccountId:
+	case dbReq.AccountId:
 		{
 			accountId := id
 			sql := `
@@ -64,7 +68,7 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbreq.GetPageDat
 			return
 		}
 
-	case dbreq.PageId:
+	case dbReq.PageId:
 		{
 			pageId := id
 			sql := `
@@ -78,7 +82,7 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbreq.GetPageDat
 			return
 		}
 
-	case dbreq.PostId:
+	case dbReq.PostId:
 		{
 			postId := id
 			sql := `
@@ -101,7 +105,7 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbreq.GetPageDat
 	return
 }
 
-func (p *PostgresDbClient) EditPageSettings(ctx context.Context, req dbreq.EditPageSettingsRequest) error {
+func (p *PostgresDbClient) EditPageSettings(ctx context.Context, req dbReq.EditPageSettingsRequest) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE pages
@@ -133,7 +137,7 @@ func (p *PostgresDbClient) EditPageSettings(ctx context.Context, req dbreq.EditP
 	return nil
 }
 
-func (p *PostgresDbClient) NewPost(ctx context.Context, req dbreq.NewPostRequest) (resp dbreq.NewPostResponse, err error) {
+func (p *PostgresDbClient) NewPost(ctx context.Context, req dbReq.NewPostRequest) (resp dbReq.NewPostResponse, err error) {
 	sql := `
 	INSERT INTO posts(page_id, author_account_id, text_content, source_post_id)
 	VALUES ($1, $2, $3, $4)
@@ -142,14 +146,104 @@ func (p *PostgresDbClient) NewPost(ctx context.Context, req dbreq.NewPostRequest
 
 	pgSourcePostId := pgtype.Int4{Int32: int32(req.Content.SourcePostId.Value), Valid: req.Content.SourcePostId.HasValue}
 
-	row := p.connPool.QueryRow(ctx, sql, req.PageId, req.AuthorId, req.Content.TextContent, pgSourcePostId)
+	row := p.connPool.QueryRow(ctx, sql, req.PageId, req.AuthorId, req.Content.Text, pgSourcePostId)
 	err = row.Scan(&resp.Id)
 	return
 }
 
-func (p *PostgresDbClient) NewComment(ctx context.Context, req dbreq.NewCommentRequest) (resp dbreq.NewCommentResponse, err error) {
+func (p *PostgresDbClient) GetPost(ctx context.Context, req dbReq.GetPostRequest) (resp dbReq.GetPostResponse, err error) {
 	sql := `
-	INSERT INTO comments(post_id, author_account_id, content, reply_comment_id)
+	SELECT page_id, author_account_id, text_content, source_post_id, pinned, created_at
+	FROM posts
+	WHERE id = $1;
+	`
+
+	var post dbTypes.Post
+	var pgSourcePostId pgtype.Int4
+
+	row := p.connPool.QueryRow(ctx, sql, req.PostId)
+	err = row.Scan(&post.PageId, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.CreatedAt)
+	if err != nil {
+		return
+	}
+
+	post.Id = req.PostId
+	post.Content.SourcePostId = dbTypes.Option[dbTypes.PostId]{
+		Value:    dbTypes.PostId(pgSourcePostId.Int32),
+		HasValue: pgSourcePostId.Valid,
+	}
+	resp.Post = post
+	return
+}
+
+const POSTGRES_POSTS_PAGE_SIZE = 10
+
+func (p *PostgresDbClient) GetPosts(ctx context.Context, req dbReq.GetPostsRequest) (dbReq.GetPostsResponse, error) {
+	sql := fmt.Sprintf(`
+	SELECT id, author_account_id, text_content, source_post_id, pinned, created_at
+	FROM posts
+	WHERE page_id = $1 AND created_at < $2
+	ORDER BY created_at DESC
+	LIMIT %d;
+	`, POSTGRES_POSTS_PAGE_SIZE)
+
+	page, err := decodePgPostsPagiToken(req.PageToken)
+	if err != nil {
+		return dbReq.GetPostsResponse{}, err
+	}
+
+	rows, err := p.connPool.Query(ctx, sql, req.PageId, page.LastCreatedAt)
+	if err != nil {
+		return dbReq.GetPostsResponse{}, err
+	}
+
+	posts := make([]dbTypes.Post, 0, POSTGRES_POSTS_PAGE_SIZE)
+
+	for {
+		if !rows.Next() {
+			err := rows.Err()
+			if err != nil {
+				return dbReq.GetPostsResponse{}, err
+			}
+
+			break
+		}
+
+		var post dbTypes.Post
+		var pgSourcePostId pgtype.Int4
+		err := rows.Scan(&post.Id, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.CreatedAt)
+		if err != nil {
+			return dbReq.GetPostsResponse{}, err
+		}
+
+		post.PageId = req.PageId
+		post.Content.SourcePostId = dbTypes.Option[dbTypes.PostId]{Value: dbTypes.PostId(pgSourcePostId.Int32), HasValue: pgSourcePostId.Valid}
+		posts = append(posts, post)
+	}
+
+	var nextPageToken dbReq.PaginationToken
+	if len(posts) > 0 {
+		token := pgPostsPagiToken{
+			LastCreatedAt: posts[len(posts)-1].CreatedAt,
+		}
+		encodedToken, err := encodePgPostsPagiToken(token)
+
+		if err != nil {
+			log.Printf("warning: cannot encode paginating token (%v): %v", token, err)
+		} else {
+			nextPageToken = encodedToken
+		}
+	}
+
+	return dbReq.GetPostsResponse{
+		Posts:         posts,
+		NextPageToken: dbReq.PaginationToken(nextPageToken),
+	}, nil
+}
+
+func (p *PostgresDbClient) NewComment(ctx context.Context, req dbReq.NewCommentRequest) (resp dbReq.NewCommentResponse, err error) {
+	sql := `
+	INSERT INTO comments(post_id, author_account_id, text_content, reply_comment_id)
 	VALUES ($1, $2, $3, $4)
 	RETURNING id;
 	`
@@ -159,4 +253,39 @@ func (p *PostgresDbClient) NewComment(ctx context.Context, req dbreq.NewCommentR
 	row := p.connPool.QueryRow(ctx, sql, req.PostId, req.AuthorId, req.Content, pgReplyCommentId)
 	err = row.Scan(&resp.Id)
 	return
+}
+
+type pgPostsPagiToken struct {
+	LastCreatedAt time.Time `json:"lcr"`
+}
+
+func decodePgPostsPagiToken(token dbReq.PaginationToken) (pgPostsPagiToken, error) {
+	if token == "" {
+		return pgPostsPagiToken{
+			LastCreatedAt: time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC),
+		}, nil
+	}
+
+	raw, err := base64.RawURLEncoding.DecodeString(string(token))
+	if err != nil {
+		return pgPostsPagiToken{}, err
+	}
+
+	var decoded pgPostsPagiToken
+	err = json.Unmarshal(raw, &decoded)
+	if err != nil {
+		return pgPostsPagiToken{}, err
+	}
+
+	return decoded, nil
+}
+
+func encodePgPostsPagiToken(token pgPostsPagiToken) (dbReq.PaginationToken, error) {
+	raw, err := json.Marshal(&token)
+	if err != nil {
+		return "", err
+	}
+
+	encoded := base64.RawURLEncoding.EncodeToString(raw)
+	return dbReq.PaginationToken(encoded), nil
 }

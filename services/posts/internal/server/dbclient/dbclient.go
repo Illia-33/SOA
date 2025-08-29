@@ -8,6 +8,10 @@ import (
 type DatabaseClient interface {
 	GetPageData(context.Context, req.GetPageDataRequest) (req.GetPageDataResponse, error)
 	EditPageSettings(context.Context, req.EditPageSettingsRequest) error
+
 	NewPost(context.Context, req.NewPostRequest) (req.NewPostResponse, error)
+	GetPost(context.Context, req.GetPostRequest) (req.GetPostResponse, error)
+	GetPosts(context.Context, req.GetPostsRequest) (req.GetPostsResponse, error)
+
 	NewComment(context.Context, req.NewCommentRequest) (req.NewCommentResponse, error)
 }
