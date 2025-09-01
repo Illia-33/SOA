@@ -1,6 +1,8 @@
 package types
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type Optional[T any] struct {
 	Value    T
@@ -20,7 +22,10 @@ func (o *Optional[T]) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (o *Optional[T]) MarshalJSON() ([]byte, error) {
+func (o Optional[T]) MarshalJSON() ([]byte, error) {
+	if !o.HasValue {
+		json.Marshal(nil)
+	}
 	return json.Marshal(o.Value)
 }
 
