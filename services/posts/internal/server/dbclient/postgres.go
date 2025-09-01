@@ -84,6 +84,11 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDat
 
 			row := p.connPool.QueryRow(ctx, sql, pageId)
 			err = row.Scan(&resp.AccountId, &resp.VisibleForUnauthorized, &resp.CommentsEnabled, &resp.AnyoneCanPost)
+			if err != nil {
+				err = status.Error(codes.NotFound, "page not found")
+				return
+			}
+
 			resp.Id = dbTypes.PageId(pageId)
 			return
 		}
@@ -103,6 +108,9 @@ func (p *PostgresDbClient) GetPageData(ctx context.Context, req dbReq.GetPageDat
 
 			row := p.connPool.QueryRow(ctx, sql, postId)
 			err = row.Scan(&resp.Id, &resp.AccountId, &resp.VisibleForUnauthorized, &resp.CommentsEnabled, &resp.AnyoneCanPost)
+			if err != nil {
+				err = status.Error(codes.NotFound, "page not found")
+			}
 			return
 		}
 	}
@@ -170,6 +178,7 @@ func (p *PostgresDbClient) GetPost(ctx context.Context, req dbReq.GetPostRequest
 	row := p.connPool.QueryRow(ctx, sql, req.PostId)
 	err = row.Scan(&post.PageId, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.CreatedAt)
 	if err != nil {
+		err = status.Error(codes.NotFound, "post not found")
 		return
 	}
 
