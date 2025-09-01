@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -251,30 +252,30 @@ func TestApiTokenSimple(t *testing.T) {
 	}, soaTokenAuth(token))
 }
 
-// func TestApiTokenTimeout(t *testing.T) {
-// 	id := registerUserOk(t, map[string]any{
-// 		"login":        "api_token_timeout",
-// 		"password":     "testpasswd",
-// 		"email":        "api_token_timeout@yahoo.com",
-// 		"phone_number": "+79250000010",
-// 		"name":         "Test",
-// 		"surname":      "ApiTokenTimeout",
-// 	})
+func TestApiTokenTimeout(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "api_token_timeout",
+		"password":     "testpasswd",
+		"email":        "api_token_timeout@yahoo.com",
+		"phone_number": "+79250000010",
+		"name":         "Test",
+		"surname":      "ApiTokenTimeout",
+	})
 
-// 	token := createApiTokenOk(t, map[string]any{
-// 		"auth": map[string]any{
-// 			"login":    "api_token_timeout",
-// 			"password": "testpasswd",
-// 		},
-// 		"read_access":  true,
-// 		"write_access": true,
-// 		"ttl":          "5s",
-// 	})
+	token := createApiTokenOk(t, map[string]any{
+		"auth": map[string]any{
+			"login":    "api_token_timeout",
+			"password": "testpasswd",
+		},
+		"read_access":  true,
+		"write_access": true,
+		"ttl":          "5s",
+	})
 
-// 	time.Sleep(6 * time.Second)
+	time.Sleep(6 * time.Second)
 
-// 	resp := tryEditProfile(t, id, map[string]any{
-// 		"bio": "new bio",
-// 	}, soaTokenAuth(token))
-// 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
-// }
+	resp := tryEditProfile(t, id, map[string]any{
+		"bio": "new bio",
+	}, soaTokenAuth(token))
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
