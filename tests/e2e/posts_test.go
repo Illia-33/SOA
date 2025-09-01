@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// GetPageSettings
-
 func tryGetPageSettings(t *testing.T, profileId string) *http.Response {
 	return makeRequest(t, http.MethodGet, fmt.Sprintf("/profile/%s/page/settings", profileId), nil, "")
 }
