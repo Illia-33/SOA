@@ -37,6 +37,7 @@ func newGatewayService(cfg GatewayServiceConfig) GatewayService {
 		jwtVerifier:         soajwt.NewVerifier(cfg.JwtPublicKey),
 		accountsGrpcTarget:  fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
 		accountsStubFactory: cfg.AccountsServiceStubFactory,
+		postsStubFactory:    cfg.PostsServiceStubFactory,
 	}
 }
 
