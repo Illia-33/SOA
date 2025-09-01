@@ -332,6 +332,7 @@ func (s *GatewayService) GetPosts(qp *query.Params, req *api.GetPostsRequest) (a
 
 	resp, err := stub.GetPosts(context.Background(), &postsPb.GetPostsRequest{
 		PageAccountId: accountId,
+		PageToken:     req.PageToken,
 	})
 	if err != nil {
 		return api.GetPostsResponse{}, httperr.FromGrpcError(err)
