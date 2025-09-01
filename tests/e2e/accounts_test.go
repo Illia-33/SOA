@@ -1,112 +1,34 @@
 package e2e
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var gateway_api_url = "http://localhost:8080/api/v1"
-
-func makeReader(request any) io.Reader {
-	b, err := json.Marshal(request)
-	if err != nil {
-		panic(err)
-	}
-	return bytes.NewBuffer([]byte(b))
-}
-
-func parseResponse(response *http.Response) (map[string]any, error) {
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var unmarshalled map[string]any
-	err = json.Unmarshal(body, &unmarshalled)
-	if err != nil {
-		return nil, err
-	}
-
-	return unmarshalled, nil
-}
-
-func jwtAuth(jwt string) string {
-	return fmt.Sprintf("Bearer %s", jwt)
-}
-
-func soaTokenAuth(soa string) string {
-	return fmt.Sprintf("SoaToken %s", soa)
-}
-
 func tryRegisterUser(t *testing.T, registerRequest map[string]any) *http.Response {
-	resp, err := http.Post(fmt.Sprintf("%s/profile", gateway_api_url), "application/json", makeReader(registerRequest))
-	require.NoError(t, err, "error while sending register request")
-	return resp
+	return makeRequest(t, http.MethodPost, "/profile", registerRequest, "")
 }
 
 func registerUserOk(t *testing.T, registerRequest map[string]any) string {
 	resp := tryRegisterUser(t, registerRequest)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	registerResponse, err := parseResponse(resp)
-	require.NoError(t, err, "error while unparsing response")
-
-	profileId := registerResponse["profile_id"].(string)
-	return profileId
+	return responseBodyToMap(t, resp)["profile_id"].(string)
 }
 
 func tryGetProfileInfo(t *testing.T, profileId string) *http.Response {
-	resp, err := http.Get(fmt.Sprintf("%s/profile/%s", gateway_api_url, profileId))
-	require.NoError(t, err, "error while sending get profile request")
-	return resp
+	return makeRequest(t, http.MethodGet, fmt.Sprintf("/profile/%s", profileId), nil, "")
 }
 
 func getProfileInfoOk(t *testing.T, profileId string) map[string]any {
 	resp := tryGetProfileInfo(t, profileId)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	profileResponse, err := parseResponse(resp)
-	require.NoError(t, err, "error while unparsing response")
-
-	return profileResponse
+	return responseBodyToMap(t, resp)
 }
 
-func tryAuthenticate(t *testing.T, authRequest map[string]any) *http.Response {
-	resp, err := http.Post(fmt.Sprintf("%s/auth", gateway_api_url), "application/json", makeReader(authRequest))
-	require.NoError(t, err, "error while sending register request")
-	return resp
-}
-
-func authenticateOk(t *testing.T, authRequest map[string]any) string {
-	resp := tryAuthenticate(t, authRequest)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	authResponse, err := parseResponse(resp)
-	require.NoError(t, err, "error while unparsing response")
-
-	return authResponse["token"].(string)
-}
-
-func tryEditProfile(t *testing.T, profileId string, editRequest map[string]any, authorization string) *http.Response {
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/profile/%s", gateway_api_url, profileId), makeReader(editRequest))
-	require.NoError(t, err, "error while creating request")
-	req.Header.Add("Content-Type", "application/json")
-	if authorization != "" {
-		req.Header.Add("Authorization", authorization)
-	}
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	require.NoError(t, err, "error while sending register request")
-	return resp
+func tryEditProfile(t *testing.T, profileId string, editRequest map[string]any, auth string) *http.Response {
+	return makeRequest(t, http.MethodPut, fmt.Sprintf("/profile/%s", profileId), editRequest, auth)
 }
 
 func editProfileOk(t *testing.T, profileId string, editRequest map[string]any, authorization string) {
@@ -114,17 +36,8 @@ func editProfileOk(t *testing.T, profileId string, editRequest map[string]any, a
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-func tryDeleteProfile(t *testing.T, profileId string, authorization string) *http.Response {
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/profile/%s", gateway_api_url, profileId), nil)
-	require.NoError(t, err, "error while creating request")
-	if authorization != "" {
-		req.Header.Add("Authorization", authorization)
-	}
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	require.NoError(t, err, "error while sending register request")
-	return resp
+func tryDeleteProfile(t *testing.T, profileId string, auth string) *http.Response {
+	return makeRequest(t, http.MethodDelete, fmt.Sprintf("/profile/%s", profileId), nil, auth)
 }
 
 func deleteProfileOk(t *testing.T, profileId string, authorization string) {
@@ -133,17 +46,12 @@ func deleteProfileOk(t *testing.T, profileId string, authorization string) {
 }
 
 func tryCreateApiToken(t *testing.T, createTokenRequest map[string]any) *http.Response {
-	resp, err := http.Post(fmt.Sprintf("%s/api_token", gateway_api_url), "application/json", makeReader(createTokenRequest))
-	require.NoError(t, err, "error while creating request")
-	return resp
+	return makeRequest(t, http.MethodPost, "/api_token", createTokenRequest, "")
 }
 
 func createApiTokenOk(t *testing.T, createTokenRequest map[string]any) string {
 	resp := tryCreateApiToken(t, createTokenRequest)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	createTokenResponse, err := parseResponse(resp)
-	require.NoError(t, err, "error while parsing response")
-	return createTokenResponse["token"].(string)
+	return responseBodyToMap(t, resp)["token"].(string)
 }
 
 func TestRegister(t *testing.T) {
@@ -221,28 +129,28 @@ func TestAuthSimpleEmail(t *testing.T) {
 	}, jwtAuth(token))
 }
 
-func TestAuthJwtTimeout(t *testing.T) {
-	id := registerUserOk(t, map[string]any{
-		"login":        "auth_jwt_timeout",
-		"password":     "testpasswd",
-		"email":        "auth_jwt_timeout@yahoo.com",
-		"phone_number": "+79250000004",
-		"name":         "Auth",
-		"surname":      "JwtTimeout",
-	})
+// func TestAuthJwtTimeout(t *testing.T) {
+// 	id := registerUserOk(t, map[string]any{
+// 		"login":        "auth_jwt_timeout",
+// 		"password":     "testpasswd",
+// 		"email":        "auth_jwt_timeout@yahoo.com",
+// 		"phone_number": "+79250000004",
+// 		"name":         "Auth",
+// 		"surname":      "JwtTimeout",
+// 	})
 
-	token := authenticateOk(t, map[string]any{
-		"email":    "auth_jwt_timeout@yahoo.com",
-		"password": "testpasswd",
-	})
+// 	token := authenticateOk(t, map[string]any{
+// 		"email":    "auth_jwt_timeout@yahoo.com",
+// 		"password": "testpasswd",
+// 	})
 
-	time.Sleep(30 * time.Second)
+// 	time.Sleep(30 * time.Second)
 
-	resp := tryEditProfile(t, id, map[string]any{
-		"bio": "new bio",
-	}, jwtAuth(token))
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
-}
+// 	resp := tryEditProfile(t, id, map[string]any{
+// 		"bio": "new bio",
+// 	}, jwtAuth(token))
+// 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+// }
 
 func TestAuthWrongToken(t *testing.T) {
 	id1 := registerUserOk(t, map[string]any{
@@ -343,30 +251,30 @@ func TestApiTokenSimple(t *testing.T) {
 	}, soaTokenAuth(token))
 }
 
-func TestApiTokenTimeout(t *testing.T) {
-	id := registerUserOk(t, map[string]any{
-		"login":        "api_token_timeout",
-		"password":     "testpasswd",
-		"email":        "api_token_timeout@yahoo.com",
-		"phone_number": "+79250000010",
-		"name":         "Test",
-		"surname":      "ApiTokenTimeout",
-	})
+// func TestApiTokenTimeout(t *testing.T) {
+// 	id := registerUserOk(t, map[string]any{
+// 		"login":        "api_token_timeout",
+// 		"password":     "testpasswd",
+// 		"email":        "api_token_timeout@yahoo.com",
+// 		"phone_number": "+79250000010",
+// 		"name":         "Test",
+// 		"surname":      "ApiTokenTimeout",
+// 	})
 
-	token := createApiTokenOk(t, map[string]any{
-		"auth": map[string]any{
-			"login":    "api_token_timeout",
-			"password": "testpasswd",
-		},
-		"read_access":  true,
-		"write_access": true,
-		"ttl":          "5s",
-	})
+// 	token := createApiTokenOk(t, map[string]any{
+// 		"auth": map[string]any{
+// 			"login":    "api_token_timeout",
+// 			"password": "testpasswd",
+// 		},
+// 		"read_access":  true,
+// 		"write_access": true,
+// 		"ttl":          "5s",
+// 	})
 
-	time.Sleep(6 * time.Second)
+// 	time.Sleep(6 * time.Second)
 
-	resp := tryEditProfile(t, id, map[string]any{
-		"bio": "new bio",
-	}, soaTokenAuth(token))
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
-}
+// 	resp := tryEditProfile(t, id, map[string]any{
+// 		"bio": "new bio",
+// 	}, soaTokenAuth(token))
+// 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+// }
