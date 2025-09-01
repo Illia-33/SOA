@@ -20,6 +20,7 @@ import (
 type GatewayService struct {
 	jwtVerifier         soajwt.Verifier
 	accountsGrpcTarget  string
+	postsGrpcTarget     string
 	accountsStubFactory soagrpc.AccountsStubFactory
 	postsStubFactory    soagrpc.PostsStubFactory
 }
@@ -36,6 +37,7 @@ func newGatewayService(cfg GatewayServiceConfig) GatewayService {
 	return GatewayService{
 		jwtVerifier:         soajwt.NewVerifier(cfg.JwtPublicKey),
 		accountsGrpcTarget:  fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
+		postsGrpcTarget:     fmt.Sprintf("%s:%d", cfg.PostsServiceHost, cfg.PostsServicePort),
 		accountsStubFactory: cfg.AccountsServiceStubFactory,
 		postsStubFactory:    cfg.PostsServiceStubFactory,
 	}
@@ -46,7 +48,7 @@ func (s *GatewayService) createAccountsStub(qp *query.Params) (accountsPb.Accoun
 }
 
 func (s *GatewayService) createPostsStub(qp *query.Params) (postsPb.PostsServiceClient, error) {
-	return s.postsStubFactory.New(s.accountsGrpcTarget, qp)
+	return s.postsStubFactory.New(s.postsGrpcTarget, qp)
 }
 
 func (s *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {

@@ -97,7 +97,7 @@ func newHttpRouter(service *GatewayService) httpRouter {
 				},
 			))
 
-			authPageGroup.POST("", createHandler(
+			authPageGroup.POST("/posts", createHandler(
 				func(qp *query.Params, r *api.NewPostRequest) (api.NewPostResponse, httperr.Err) {
 					return service.NewPost(qp, r)
 				},
