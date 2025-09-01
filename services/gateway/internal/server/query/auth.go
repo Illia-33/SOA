@@ -24,15 +24,9 @@ func WithAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 			}
 
 			rawToken := auth[7:] // skip 'Bearer '
-			token, err := verifier.Verify(rawToken)
+			_, err := verifier.Verify(rawToken)
 			if err != nil {
 				ctx.AbortWithStatusJSON(http.StatusForbidden, fmt.Sprintf("bad jwt: %v", err))
-				return
-			}
-
-			profileId := ctx.Param("profile_id")
-			if len(profileId) > 0 && token.Subject != profileId {
-				ctx.AbortWithStatusJSON(http.StatusForbidden, "access denied")
 				return
 			}
 
@@ -46,22 +40,15 @@ func WithAuth(verifier *soajwt.Verifier) gin.HandlerFunc {
 			}
 
 			rawToken := auth[9:] // skip 'SoaToken '
-			token, err := soatoken.Parse(rawToken)
+			_, err := soatoken.Parse(rawToken)
 			if err != nil {
 				ctx.AbortWithStatusJSON(http.StatusForbidden, "broken soa token")
-				return
-			}
-
-			profileId := ctx.Param("profile_id")
-			if len(profileId) > 0 && token.ProfileId.String() != profileId {
-				ctx.AbortWithStatusJSON(http.StatusForbidden, "access denied")
 				return
 			}
 
 			params := ExtractParams(ctx)
 			params.AuthToken = rawToken
 			params.AuthKind = AUTH_TOKEN_SOA
-
 		} else {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, "auth required")
 			return

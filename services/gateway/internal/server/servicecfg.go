@@ -19,4 +19,14 @@ type GatewayServiceConfig struct {
 	// Factory used for creating stubs for communication with accounts service.
 	// Could be nil, then default gRPC communication will be used.
 	AccountsServiceStubFactory soagrpc.AccountsStubFactory
+
+	// Hostname of posts service
+	PostsServiceHost string
+
+	// Port of posts service
+	PostsServicePort int
+
+	// Factory used for creating stubs for communication with posts service.
+	// Could be nil, then default gRPC communication will be used.
+	PostsServiceStubFactory soagrpc.PostsStubFactory
 }

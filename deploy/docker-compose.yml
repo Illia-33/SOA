@@ -10,6 +10,8 @@ services:
       JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
       ACCOUNTS_SERVICE_HOST: "accounts-service"
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
+      POSTS_SERVICE_HOST: "posts-service"
+      POSTS_SERVICE_PORT: ${POSTS_SERVICE_PORT}
     ports:
       - "${GATEWAY_SERVICE_PORT}:${GATEWAY_SERVICE_PORT}"
   
@@ -43,3 +45,36 @@ services:
       DB_PASSWORD: ${ACCOUNTS_POSTGRES_PASSWORD}
       DB_POOL_SIZE: 5
       JWT_ED25519_PRIVATE_KEY: ${JWT_ED25519_PRIVATE_KEY}
+
+  posts-postgres:
+    image: postgres:17-alpine
+    container_name: posts-postgres
+    environment:
+      POSTGRES_USER: ${POSTS_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTS_POSTGRES_PASSWORD}
+      POSTGRES_DB: posts-postgres
+    volumes:
+      - ${PWD}/services/posts/db/migrations:/docker-entrypoint-initdb.d
+      - ${POSTS_POSTGRES_DATA}:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready --username ${POSTS_POSTGRES_USER} --dbname posts-postgres
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  posts:
+    build:
+      dockerfile: ${PWD}/services/posts/Dockerfile
+    container_name: posts-service
+    depends_on:
+      - posts-postgres
+    environment:
+      POSTS_SERVICE_PORT: ${POSTS_SERVICE_PORT}
+      DB_HOST: "posts-postgres"
+      DB_USER: ${POSTS_POSTGRES_USER}
+      DB_PASSWORD: ${POSTS_POSTGRES_PASSWORD}
+      DB_POOL_SIZE: 5
+      JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
+    ports:
+      - ${POSTS_SERVICE_PORT}:${POSTS_SERVICE_PORT}

@@ -16,8 +16,6 @@ type httpRouter struct {
 
 type requestPerformer[TRequest any, TResponse any] func(*query.Params, *TRequest) (TResponse, httperr.Err)
 
-type emptyResponse struct{}
-
 func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequest, TResponse]) func(*gin.Context) {
 	extractor := jsonextractor.New()
 	return func(ctx *gin.Context) {
@@ -55,22 +53,83 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		idGroup := profileGroup.Group("/:profile_id")
 		idGroup.Use(query.WithProfileId())
 		idGroup.GET("", createHandler(
-			func(qp *query.Params, r *jsonextractor.EmptyRequest) (api.GetProfileResponse, httperr.Err) {
+			func(qp *query.Params, r *api.Empty) (api.GetProfileResponse, httperr.Err) {
 				return service.GetProfileInfo(qp)
 			},
 		))
 
-		idAuthGroup := idGroup.Group("")
-		idAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
-		idAuthGroup.PUT("", createHandler(
-			func(qp *query.Params, r *api.EditProfileRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, service.EditProfileInfo(qp, r)
+		{
+			idAuthGroup := idGroup.Group("")
+			idAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
+			idAuthGroup.PUT("", createHandler(
+				func(qp *query.Params, r *api.EditProfileRequest) (api.Empty, httperr.Err) {
+					return api.Empty{}, service.EditProfileInfo(qp, r)
+				},
+			))
+
+			idAuthGroup.DELETE("", createHandler(
+				func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+					return api.Empty{}, service.DeleteProfile(qp)
+				},
+			))
+		}
+
+		pageGroup := idGroup.Group("/page")
+		{
+			pageGroup.GET("/settings", createHandler(
+				func(qp *query.Params, r *api.Empty) (api.GetPageSettingsResponse, httperr.Err) {
+					return service.GetPageSettings(qp)
+				},
+			))
+			pageGroup.GET("/posts", createHandler(
+				func(qp *query.Params, r *api.GetPostsRequest) (api.GetPostsResponse, httperr.Err) {
+					return service.GetPosts(qp, r)
+				},
+			))
+		}
+
+		{
+			authPageGroup := pageGroup.Group("")
+			authPageGroup.Use(query.WithAuth(&service.jwtVerifier))
+			authPageGroup.PUT("/settings", createHandler(
+				func(qp *query.Params, r *api.EditPageSettingsRequest) (api.Empty, httperr.Err) {
+					return api.Empty{}, service.EditPageSettings(qp, r)
+				},
+			))
+
+			authPageGroup.POST("/posts", createHandler(
+				func(qp *query.Params, r *api.NewPostRequest) (api.NewPostResponse, httperr.Err) {
+					return service.NewPost(qp, r)
+				},
+			))
+		}
+	}
+
+	{
+		postGroup := restApi.Group("/post/:post_id")
+		postGroup.Use(query.WithPostId())
+		postGroup.GET("", createHandler(
+			func(qp *query.Params, r *api.Empty) (api.Post, httperr.Err) {
+				return service.GetPost(qp)
 			},
 		))
 
-		idAuthGroup.DELETE("", createHandler(
-			func(qp *query.Params, r *jsonextractor.EmptyRequest) (emptyResponse, httperr.Err) {
-				return emptyResponse{}, service.DeleteProfile(qp)
+		postAuthGroup := postGroup.Group("")
+		postAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
+		postAuthGroup.PUT("", createHandler(
+			func(qp *query.Params, r *api.EditPostRequest) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.EditPost(qp, r)
+			},
+		))
+		postAuthGroup.DELETE("", createHandler(
+			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.DeletePost(qp)
+			},
+		))
+
+		postAuthGroup.POST("/comments", createHandler(
+			func(qp *query.Params, r *api.NewCommentRequest) (api.NewCommentResponse, httperr.Err) {
+				return service.NewComment(qp, r)
 			},
 		))
 	}

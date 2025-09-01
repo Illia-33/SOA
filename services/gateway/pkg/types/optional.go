@@ -1,6 +1,8 @@
 package types
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type Optional[T any] struct {
 	Value    T
@@ -20,6 +22,29 @@ func (o *Optional[T]) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (o *Optional[T]) MarshalJSON() ([]byte, error) {
+func (o Optional[T]) MarshalJSON() ([]byte, error) {
+	if !o.HasValue {
+		json.Marshal(nil)
+	}
 	return json.Marshal(o.Value)
+}
+
+func (o *Optional[T]) ToPointer() *T {
+	if !o.HasValue {
+		return nil
+	}
+
+	val := o.Value
+	return &val
+}
+
+func OptionalFromPointer[T any](val *T) Optional[T] {
+	if val == nil {
+		return Optional[T]{}
+	}
+
+	return Optional[T]{
+		Value:    *val,
+		HasValue: true,
+	}
 }

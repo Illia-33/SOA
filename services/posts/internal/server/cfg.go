@@ -1,0 +1,12 @@
+package server
+
+import "crypto/ed25519"
+
+type PostsServiceConfig struct {
+	Port         int
+	DbHost       string
+	DbUser       string
+	DbPassword   string
+	DbPoolSize   int
+	JwtPublicKey ed25519.PublicKey
+}
