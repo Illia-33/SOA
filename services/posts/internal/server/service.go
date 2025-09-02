@@ -158,6 +158,46 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}, nil
 }
 
+func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsRequest) (*pb.GetCommentsResponse, error) {
+	authorizedId := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
+	if authorizedId == nil {
+		pageData, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
+			EntityId: dbReq.PostId(req.PostId),
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !pageData.VisibleForUnauthorized {
+			return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
+		}
+	}
+
+	dbResponse, err := s.dbClient.GetComments(ctx, dbReq.GetCommentsRequest{
+		PostId:    dbt.PostId(req.PostId),
+		PageToken: req.PageToken,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	comments := make([]*pb.Comment, len(dbResponse.Comments))
+	for i, comment := range dbResponse.Comments {
+		comments[i] = &pb.Comment{
+			Id:              int32(comment.Id),
+			AuthorAccountId: int32(comment.AuthorId),
+			Content:         string(comment.Content),
+			ReplyCommentId:  (*int32)(comment.ReplyId.ToPointer()),
+		}
+	}
+
+	return &pb.GetCommentsResponse{
+		Comments:      comments,
+		NextPageToken: string(dbResponse.NextPageToken),
+	}, nil
+}
+
 func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
 	pageData, err := s.dbClient.GetPageData(ctx, dbReq.GetPageDataRequest{
 		EntityId: dbReq.PostId(req.PostId),
@@ -204,7 +244,7 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 
 	dbResp, err := s.dbClient.GetPosts(ctx, dbReq.GetPostsRequest{
 		PageId:    pageData.Id,
-		PageToken: dbReq.PaginationToken(req.PageToken),
+		PageToken: dbReq.PagiToken(req.PageToken),
 	})
 	if err != nil {
 		return nil, err

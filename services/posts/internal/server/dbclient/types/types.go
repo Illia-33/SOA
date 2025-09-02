@@ -32,7 +32,7 @@ type Post struct {
 	CreatedAt       time.Time
 }
 
-type CommentData struct {
+type Comment struct {
 	Id        CommentId
 	PostId    PostId
 	AuthorId  AccountId

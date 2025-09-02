@@ -2,14 +2,11 @@ package dbclient
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	dbReq "soa-socialnetwork/services/posts/internal/server/dbclient/requests"
 	dbTypes "soa-socialnetwork/services/posts/internal/server/dbclient/types"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -236,7 +233,7 @@ func (p *PostgresDbClient) GetPosts(ctx context.Context, req dbReq.GetPostsReque
 		posts = append(posts, post)
 	}
 
-	var nextPageToken dbReq.PaginationToken
+	var nextPageToken dbReq.PagiToken
 	if len(posts) > 0 {
 		token := pgPostsPagiToken{
 			LastCreatedAt: posts[len(posts)-1].CreatedAt,
@@ -252,7 +249,7 @@ func (p *PostgresDbClient) GetPosts(ctx context.Context, req dbReq.GetPostsReque
 
 	return dbReq.GetPostsResponse{
 		Posts:         posts,
-		NextPageToken: dbReq.PaginationToken(nextPageToken),
+		NextPageToken: dbReq.PagiToken(nextPageToken),
 	}, nil
 }
 
@@ -378,37 +375,68 @@ func (p *PostgresDbClient) NewLike(ctx context.Context, req dbReq.NewLikeRequest
 	return nil
 }
 
-type pgPostsPagiToken struct {
-	LastCreatedAt time.Time `json:"lcr"`
-}
+const POSTGRES_COMMENTS_PAGE_SIZE = 10
 
-func decodePgPostsPagiToken(token dbReq.PaginationToken) (pgPostsPagiToken, error) {
-	if token == "" {
-		return pgPostsPagiToken{
-			LastCreatedAt: time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC),
-		}, nil
-	}
-
-	raw, err := base64.RawURLEncoding.DecodeString(string(token))
+func (p *PostgresDbClient) GetComments(ctx context.Context, req dbReq.GetCommentsRequest) (dbReq.GetCommentsResponse, error) {
+	pagiToken, err := decodePgCommentsPagiToken(dbReq.PagiToken(req.PageToken))
 	if err != nil {
-		return pgPostsPagiToken{}, err
+		return dbReq.GetCommentsResponse{}, err
 	}
 
-	var decoded pgPostsPagiToken
-	err = json.Unmarshal(raw, &decoded)
+	sql := fmt.Sprintf(`
+	SELECT id, author_account_id, text_content, reply_comment_id, created_at
+	FROM comments
+	WHERE post_id = $1 AND id > $2
+	ORDER BY id
+	LIMIT %d;
+	`, POSTGRES_COMMENTS_PAGE_SIZE)
+
+	rows, err := p.connPool.Query(ctx, sql, req.PostId, pagiToken.LastId)
 	if err != nil {
-		return pgPostsPagiToken{}, err
+		return dbReq.GetCommentsResponse{}, err
 	}
 
-	return decoded, nil
-}
+	comments := make([]dbTypes.Comment, 0, POSTGRES_COMMENTS_PAGE_SIZE)
+	for {
+		if !rows.Next() {
+			err := rows.Err()
+			if err != nil {
+				return dbReq.GetCommentsResponse{}, err
+			}
+			break
+		}
 
-func encodePgPostsPagiToken(token pgPostsPagiToken) (dbReq.PaginationToken, error) {
-	raw, err := json.Marshal(&token)
-	if err != nil {
-		return "", err
+		var pgReplyCommentId pgtype.Int4
+		var comment dbTypes.Comment
+
+		err := rows.Scan(&comment.Id, &comment.AuthorId, &comment.Content, &pgReplyCommentId, &comment.CreatedAt)
+		if err != nil {
+			return dbReq.GetCommentsResponse{}, err
+		}
+
+		comment.PostId = req.PostId
+		if pgReplyCommentId.Valid {
+			comment.ReplyId = dbTypes.Some(dbTypes.CommentId(pgReplyCommentId.Int32))
+		}
+
+		comments = append(comments, comment)
 	}
 
-	encoded := base64.RawURLEncoding.EncodeToString(raw)
-	return dbReq.PaginationToken(encoded), nil
+	var nextPageToken dbReq.PagiToken
+	if len(comments) > 0 {
+		token := pgCommentsPagiToken{
+			LastId: comments[len(comments)-1].Id,
+		}
+		encodedToken, err := encodePgCommentsPagiToken(token)
+		if err != nil {
+			log.Printf("warning: cannot encode comments paginating token (%v): %v", token, err)
+		} else {
+			nextPageToken = encodedToken
+		}
+	}
+
+	return dbReq.GetCommentsResponse{
+		Comments:      comments,
+		NextPageToken: dbReq.PagiToken(nextPageToken),
+	}, nil
 }

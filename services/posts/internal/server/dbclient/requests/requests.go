@@ -25,7 +25,7 @@ type PostId types.PostId
 
 func (PostId) isPageEntityId() {}
 
-type PaginationToken string
+type PagiToken string
 
 // GetPage
 
@@ -67,12 +67,12 @@ type GetPostResponse struct {
 
 type GetPostsRequest struct {
 	PageId    types.PageId
-	PageToken PaginationToken
+	PageToken PagiToken
 }
 
 type GetPostsResponse struct {
 	Posts         []types.Post
-	NextPageToken PaginationToken
+	NextPageToken PagiToken
 }
 
 // NewComment
@@ -86,6 +86,18 @@ type NewCommentRequest struct {
 
 type NewCommentResponse struct {
 	Id types.CommentId
+}
+
+// GetComments
+
+type GetCommentsRequest struct {
+	PostId    types.PostId
+	PageToken string
+}
+
+type GetCommentsResponse struct {
+	Comments      []types.Comment
+	NextPageToken PagiToken
 }
 
 // EditPost
