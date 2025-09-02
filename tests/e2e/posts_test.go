@@ -76,6 +76,15 @@ func deletePostOk(t *testing.T, postId int, auth string) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func tryNewView(t *testing.T, postId int, auth string) *http.Response {
+	return makeRequest(t, http.MethodPost, fmt.Sprintf("/post/%d/views", postId), nil, auth)
+}
+
+func newViewOk(t *testing.T, postId int, auth string) {
+	resp := tryNewView(t, postId, auth)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func TestEditPageSettings(t *testing.T) {
 	id := registerUserOk(t, map[string]any{
 		"login":        "edit_page_settings",
@@ -280,4 +289,24 @@ func TestDeletePost(t *testing.T) {
 	deletePostOk(t, postId, jwtAuth(token))
 	deleteResponse := tryGetPost(t, postId, jwtAuth(token))
 	require.Equal(t, http.StatusNotFound, deleteResponse.StatusCode)
+}
+
+func TestNewView(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "new_view",
+		"password":     "testpasswd",
+		"email":        "new_view@yahoo.com",
+		"phone_number": "+79250000018",
+		"name":         "New",
+		"surname":      "View",
+	})
+	token := authenticateOk(t, map[string]any{
+		"login":    "new_view",
+		"password": "testpasswd",
+	})
+
+	postId := createPostOk(t, id, map[string]any{"text": "post content"}, jwtAuth(token))
+	newViewOk(t, postId, jwtAuth(token))
+	post := getPostOk(t, postId, jwtAuth(token))
+	require.Equal(t, 1, int(post["views_count"].(float64)))
 }
