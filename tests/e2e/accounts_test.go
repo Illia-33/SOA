@@ -130,28 +130,28 @@ func TestAuthSimpleEmail(t *testing.T) {
 	}, jwtAuth(token))
 }
 
-// func TestAuthJwtTimeout(t *testing.T) {
-// 	id := registerUserOk(t, map[string]any{
-// 		"login":        "auth_jwt_timeout",
-// 		"password":     "testpasswd",
-// 		"email":        "auth_jwt_timeout@yahoo.com",
-// 		"phone_number": "+79250000004",
-// 		"name":         "Auth",
-// 		"surname":      "JwtTimeout",
-// 	})
+func TestAuthJwtTimeout(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "auth_jwt_timeout",
+		"password":     "testpasswd",
+		"email":        "auth_jwt_timeout@yahoo.com",
+		"phone_number": "+79250000004",
+		"name":         "Auth",
+		"surname":      "JwtTimeout",
+	})
 
-// 	token := authenticateOk(t, map[string]any{
-// 		"email":    "auth_jwt_timeout@yahoo.com",
-// 		"password": "testpasswd",
-// 	})
+	token := authenticateOk(t, map[string]any{
+		"email":    "auth_jwt_timeout@yahoo.com",
+		"password": "testpasswd",
+	})
 
-// 	time.Sleep(30 * time.Second)
+	time.Sleep(30 * time.Second)
 
-// 	resp := tryEditProfile(t, id, map[string]any{
-// 		"bio": "new bio",
-// 	}, jwtAuth(token))
-// 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
-// }
+	resp := tryEditProfile(t, id, map[string]any{
+		"bio": "new bio",
+	}, jwtAuth(token))
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
 
 func TestAuthWrongToken(t *testing.T) {
 	id1 := registerUserOk(t, map[string]any{
