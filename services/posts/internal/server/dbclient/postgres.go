@@ -358,7 +358,7 @@ func (p *PostgresDbClient) NewView(ctx context.Context, req dbReq.NewViewRequest
 	}
 
 	if countAffected != 1 {
-		log.Println("warning: more than 1 post with id %d in posts table", req.PostId)
+		log.Printf("warning: more than 1 post with id %d in posts table", req.PostId)
 	}
 
 	return nil
