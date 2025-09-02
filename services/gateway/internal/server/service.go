@@ -300,6 +300,7 @@ func postFromProto(proto *postsPb.Post) api.Post {
 		Text:         proto.Text,
 		SourcePostId: types.OptionalFromPointer(proto.SourcePostId),
 		Pinned:       proto.Pinned,
+		ViewsCount:   proto.ViewsCount,
 	}
 }
 
@@ -401,4 +402,20 @@ func (s *GatewayService) NewComment(qp *query.Params, req *api.NewCommentRequest
 	return api.NewCommentResponse{
 		CommentId: resp.CommentId,
 	}, httperr.Ok()
+}
+
+func (s *GatewayService) NewView(qp *query.Params) httperr.Err {
+	stub, err := s.createPostsStub(qp)
+	if err != nil {
+		return httperr.New(http.StatusInternalServerError, err)
+	}
+
+	_, err = stub.NewView(context.Background(), &postsPb.NewViewRequest{
+		PostId: qp.PostId,
+	})
+	if err != nil {
+		return httperr.FromGrpcError(err)
+	}
+
+	return httperr.Ok()
 }
