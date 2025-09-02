@@ -85,6 +85,15 @@ func newViewOk(t *testing.T, postId int, auth string) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func tryNewLike(t *testing.T, postId int, auth string) *http.Response {
+	return makeRequest(t, http.MethodPost, fmt.Sprintf("/post/%d/likes", postId), nil, auth)
+}
+
+func newLikeOk(t *testing.T, postId int, auth string) {
+	resp := tryNewLike(t, postId, auth)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func TestEditPageSettings(t *testing.T) {
 	id := registerUserOk(t, map[string]any{
 		"login":        "edit_page_settings",
@@ -309,4 +318,22 @@ func TestNewView(t *testing.T) {
 	newViewOk(t, postId, jwtAuth(token))
 	post := getPostOk(t, postId, jwtAuth(token))
 	require.Equal(t, 1, int(post["views_count"].(float64)))
+}
+
+func TestNewLike(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "new_like",
+		"password":     "testpasswd",
+		"email":        "new_like@yahoo.com",
+		"phone_number": "+79250000019",
+		"name":         "New",
+		"surname":      "Like",
+	})
+	token := authenticateOk(t, map[string]any{
+		"login":    "new_like",
+		"password": "testpasswd",
+	})
+
+	postId := createPostOk(t, id, map[string]any{"text": "post content"}, jwtAuth(token))
+	newLikeOk(t, postId, jwtAuth(token))
 }
