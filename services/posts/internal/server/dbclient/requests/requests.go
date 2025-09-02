@@ -101,3 +101,10 @@ type EditPostRequest struct {
 type DeletePostRequest struct {
 	PostId types.PostId
 }
+
+// AddView
+
+type NewViewRequest struct {
+	AccountId types.AccountId
+	PostId    types.PostId
+}

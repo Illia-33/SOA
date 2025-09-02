@@ -28,6 +28,7 @@ type Post struct {
 	AuthorAccountId AccountId
 	Content         PostContent
 	Pinned          bool
+	ViewsCount      int32
 	CreatedAt       time.Time
 }
 

@@ -297,3 +297,22 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 
 	return &pb.Empty{}, err
 }
+
+func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb.Empty, error) {
+	authorizedIdVal := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
+	if authorizedIdVal == nil {
+		return nil, status.Error(codes.PermissionDenied, "permission denied")
+	}
+	authorizedId := authorizedIdVal.(dbt.AccountId)
+
+	err := s.dbClient.NewView(ctx, dbReq.NewViewRequest{
+		AccountId: authorizedId,
+		PostId:    dbt.PostId(req.PostId),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}

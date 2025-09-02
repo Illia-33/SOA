@@ -167,7 +167,7 @@ func (p *PostgresDbClient) NewPost(ctx context.Context, req dbReq.NewPostRequest
 
 func (p *PostgresDbClient) GetPost(ctx context.Context, req dbReq.GetPostRequest) (resp dbReq.GetPostResponse, err error) {
 	sql := `
-	SELECT page_id, author_account_id, text_content, source_post_id, pinned, created_at
+	SELECT page_id, author_account_id, text_content, source_post_id, pinned, views_count, created_at
 	FROM posts
 	WHERE id = $1;
 	`
@@ -176,7 +176,7 @@ func (p *PostgresDbClient) GetPost(ctx context.Context, req dbReq.GetPostRequest
 	var pgSourcePostId pgtype.Int4
 
 	row := p.connPool.QueryRow(ctx, sql, req.PostId)
-	err = row.Scan(&post.PageId, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.CreatedAt)
+	err = row.Scan(&post.PageId, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.ViewsCount, &post.CreatedAt)
 	if err != nil {
 		err = status.Error(codes.NotFound, "post not found")
 		return
@@ -195,7 +195,7 @@ const POSTGRES_POSTS_PAGE_SIZE = 10
 
 func (p *PostgresDbClient) GetPosts(ctx context.Context, req dbReq.GetPostsRequest) (dbReq.GetPostsResponse, error) {
 	sql := fmt.Sprintf(`
-	SELECT id, author_account_id, text_content, source_post_id, pinned, created_at
+	SELECT id, author_account_id, text_content, source_post_id, pinned, views_count, created_at
 	FROM posts
 	WHERE page_id = $1 AND created_at < $2
 	ORDER BY created_at DESC
@@ -226,7 +226,7 @@ func (p *PostgresDbClient) GetPosts(ctx context.Context, req dbReq.GetPostsReque
 
 		var post dbTypes.Post
 		var pgSourcePostId pgtype.Int4
-		err := rows.Scan(&post.Id, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.CreatedAt)
+		err := rows.Scan(&post.Id, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.ViewsCount, &post.CreatedAt)
 		if err != nil {
 			return dbReq.GetPostsResponse{}, err
 		}
@@ -330,6 +330,35 @@ func (p *PostgresDbClient) DeletePost(ctx context.Context, req dbReq.DeletePostR
 
 	if countAffected != 1 {
 		log.Printf("warning: more than 1 post with id = %d", req.PostId)
+	}
+
+	return nil
+}
+
+func (p *PostgresDbClient) NewView(ctx context.Context, req dbReq.NewViewRequest) error {
+	sql := `
+	WITH affected_rows AS (
+		UPDATE posts
+		SET
+			views_count = views_count + 1
+		WHERE id = $1
+		RETURNING 1
+	)
+	SELECT count(*) FROM affected_rows;
+	`
+
+	row := p.connPool.QueryRow(ctx, sql, req.PostId)
+	var countAffected int
+	if err := row.Scan(&countAffected); err != nil {
+		return err
+	}
+
+	if countAffected == 0 {
+		return status.Error(codes.NotFound, "post not found")
+	}
+
+	if countAffected != 1 {
+		log.Println("warning: more than 1 post with id %d in posts table", req.PostId)
 	}
 
 	return nil

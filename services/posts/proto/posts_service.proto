@@ -91,6 +91,11 @@ message NewCommentResponse {
     int32 comment_id = 1;
 };
 
+// NewView
+message NewViewRequest {
+    int32 post_id = 1;
+}
+
 service PostsService {
     rpc GetPageSettings(GetPageSettingsRequest) returns (GetPageSettingsResponse);
     rpc EditPageSettings(EditPageSettingsRequest) returns (Empty);
@@ -102,4 +107,5 @@ service PostsService {
     rpc DeletePost(DeletePostRequest) returns (Empty);
     
     rpc NewComment(NewCommentRequest) returns (NewCommentResponse);
+    rpc NewView(NewViewRequest) returns (Empty); 
 };
