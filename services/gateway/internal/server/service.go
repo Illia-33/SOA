@@ -419,3 +419,19 @@ func (s *GatewayService) NewView(qp *query.Params) httperr.Err {
 
 	return httperr.Ok()
 }
+
+func (s *GatewayService) NewLike(qp *query.Params) httperr.Err {
+	stub, err := s.createPostsStub(qp)
+	if err != nil {
+		return httperr.New(http.StatusInternalServerError, err)
+	}
+
+	_, err = stub.NewLike(context.Background(), &postsPb.NewLikeRequest{
+		PostId: qp.PostId,
+	})
+	if err != nil {
+		return httperr.FromGrpcError(err)
+	}
+
+	return httperr.Ok()
+}

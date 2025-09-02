@@ -143,6 +143,9 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		restApi.POST("/post/:post_id/views", withPostId, withAuth, createHandler(func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
 			return api.Empty{}, service.NewView(qp)
 		}))
+		restApi.POST("/post/:post_id/likes", withPostId, withAuth, createHandler(func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+			return api.Empty{}, service.NewLike(qp)
+		}))
 	}
 
 	return httpRouter{router}
