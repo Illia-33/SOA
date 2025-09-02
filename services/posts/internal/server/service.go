@@ -185,6 +185,7 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 		Text:            string(dbResp.Post.Content.Text),
 		SourcePostId:    (*int32)(dbResp.Post.Content.SourcePostId.ToPointer()),
 		Pinned:          dbResp.Post.Pinned,
+		ViewsCount:      dbResp.Post.ViewsCount,
 	}, nil
 }
 
@@ -217,6 +218,7 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 			Text:            string(post.Content.Text),
 			SourcePostId:    (*int32)(post.Content.SourcePostId.ToPointer()),
 			Pinned:          post.Pinned,
+			ViewsCount:      post.ViewsCount,
 		}
 	}
 

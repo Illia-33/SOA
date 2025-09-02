@@ -82,6 +82,7 @@ type Post struct {
 	Text         string                `json:"text"`
 	SourcePostId types.Optional[int32] `json:"source_post_id"`
 	Pinned       bool                  `json:"pinned"`
+	ViewsCount   int32                 `json:"views_count"`
 }
 
 type GetPostsRequest struct {

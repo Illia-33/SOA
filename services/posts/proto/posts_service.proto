@@ -12,6 +12,7 @@ message Post {
     string text = 3;
     optional int32 source_post_id = 4;
     bool pinned = 5;
+    int32 views_count = 6;
 }
 
 // GetPageSettings
