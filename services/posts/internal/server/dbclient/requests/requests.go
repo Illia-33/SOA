@@ -102,7 +102,7 @@ type DeletePostRequest struct {
 	PostId types.PostId
 }
 
-// AddView
+// NewView
 
 type NewViewRequest struct {
 	AccountId types.AccountId
