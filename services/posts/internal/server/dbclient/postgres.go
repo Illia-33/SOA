@@ -364,6 +364,20 @@ func (p *PostgresDbClient) NewView(ctx context.Context, req dbReq.NewViewRequest
 	return nil
 }
 
+func (p *PostgresDbClient) NewLike(ctx context.Context, req dbReq.NewLikeRequest) error {
+	sql := `
+	INSERT INTO likes(post_id, author_account_id)
+	VALUES ($1, $2)
+	`
+
+	_, err := p.connPool.Exec(ctx, sql, req.PostId, req.AccountId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type pgPostsPagiToken struct {
 	LastCreatedAt time.Time `json:"lcr"`
 }

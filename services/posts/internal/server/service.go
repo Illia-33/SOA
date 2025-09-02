@@ -318,3 +318,22 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 
 	return &pb.Empty{}, nil
 }
+
+func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb.Empty, error) {
+	authorizedIdVal := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
+	if authorizedIdVal == nil {
+		return nil, status.Error(codes.PermissionDenied, "permission denied")
+	}
+	authorizedId := authorizedIdVal.(dbt.AccountId)
+
+	err := s.dbClient.NewLike(ctx, dbReq.NewLikeRequest{
+		AccountId: authorizedId,
+		PostId:    dbt.PostId(req.PostId),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}

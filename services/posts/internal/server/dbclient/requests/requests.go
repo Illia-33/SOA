@@ -108,3 +108,10 @@ type NewViewRequest struct {
 	AccountId types.AccountId
 	PostId    types.PostId
 }
+
+// NewLike
+
+type NewLikeRequest struct {
+	AccountId types.AccountId
+	PostId    types.PostId
+}

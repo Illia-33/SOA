@@ -17,4 +17,5 @@ type DatabaseClient interface {
 
 	NewComment(context.Context, req.NewCommentRequest) (req.NewCommentResponse, error)
 	NewView(context.Context, req.NewViewRequest) error
+	NewLike(context.Context, req.NewLikeRequest) error
 }
