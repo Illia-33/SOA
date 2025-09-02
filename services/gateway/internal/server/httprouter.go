@@ -41,110 +41,106 @@ func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequ
 func newHttpRouter(service *GatewayService) httpRouter {
 	router := gin.Default()
 	restApi := router.Group("/api/v1")
+	withAuth := query.WithAuth(&service.jwtVerifier)
+	withProfileId := query.WithProfileId()
+	withPostId := query.WithPostId()
 
-	profileGroup := restApi.Group("/profile")
 	{
+		profileGroup := restApi.Group("/profile")
 		profileGroup.POST("", createHandler(
 			func(qp *query.Params, r *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
 				return service.RegisterProfile(qp, r)
 			},
 		))
 
-		idGroup := profileGroup.Group("/:profile_id")
-		idGroup.Use(query.WithProfileId())
-		idGroup.GET("", createHandler(
+		profileIdGroup := restApi.Group("/profile/:profile_id")
+		profileIdGroup.Use(withProfileId)
+		profileIdGroup.GET("", createHandler(
 			func(qp *query.Params, r *api.Empty) (api.GetProfileResponse, httperr.Err) {
 				return service.GetProfileInfo(qp)
 			},
 		))
 
-		{
-			idAuthGroup := idGroup.Group("")
-			idAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
-			idAuthGroup.PUT("", createHandler(
-				func(qp *query.Params, r *api.EditProfileRequest) (api.Empty, httperr.Err) {
-					return api.Empty{}, service.EditProfileInfo(qp, r)
-				},
-			))
+		profileIdGroup.PUT("", withAuth, createHandler(
+			func(qp *query.Params, r *api.EditProfileRequest) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.EditProfileInfo(qp, r)
+			},
+		))
 
-			idAuthGroup.DELETE("", createHandler(
-				func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
-					return api.Empty{}, service.DeleteProfile(qp)
-				},
-			))
-		}
+		profileIdGroup.DELETE("", withAuth, createHandler(
+			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.DeleteProfile(qp)
+			},
+		))
+	}
 
-		pageGroup := idGroup.Group("/page")
-		{
-			pageGroup.GET("/settings", createHandler(
-				func(qp *query.Params, r *api.Empty) (api.GetPageSettingsResponse, httperr.Err) {
-					return service.GetPageSettings(qp)
-				},
-			))
-			pageGroup.GET("/posts", createHandler(
-				func(qp *query.Params, r *api.GetPostsRequest) (api.GetPostsResponse, httperr.Err) {
-					return service.GetPosts(qp, r)
-				},
-			))
-		}
+	{
+		restApi.POST("/auth", createHandler(
+			func(qp *query.Params, r *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
+				return service.Authenticate(qp, r)
+			},
+		))
+		restApi.POST("/api_token", createHandler(
+			func(qp *query.Params, r *api.CreateApiTokenRequest) (api.CreateApiTokenResponse, httperr.Err) {
+				return service.CreateApiToken(qp, r)
+			},
+		))
+	}
 
-		{
-			authPageGroup := pageGroup.Group("")
-			authPageGroup.Use(query.WithAuth(&service.jwtVerifier))
-			authPageGroup.PUT("/settings", createHandler(
-				func(qp *query.Params, r *api.EditPageSettingsRequest) (api.Empty, httperr.Err) {
-					return api.Empty{}, service.EditPageSettings(qp, r)
-				},
-			))
+	{
+		restApi.GET("/profile/:profile_id/page/settings", withProfileId, createHandler(
+			func(qp *query.Params, r *api.Empty) (api.GetPageSettingsResponse, httperr.Err) {
+				return service.GetPageSettings(qp)
+			},
+		))
+		restApi.PUT("/profile/:profile_id/page/settings", withProfileId, withAuth, createHandler(
+			func(qp *query.Params, r *api.EditPageSettingsRequest) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.EditPageSettings(qp, r)
+			},
+		))
+	}
 
-			authPageGroup.POST("/posts", createHandler(
-				func(qp *query.Params, r *api.NewPostRequest) (api.NewPostResponse, httperr.Err) {
-					return service.NewPost(qp, r)
-				},
-			))
-		}
+	{
+		restApi.GET("/profile/:profile_id/page/posts", withProfileId, createHandler(
+			func(qp *query.Params, r *api.GetPostsRequest) (api.GetPostsResponse, httperr.Err) {
+				return service.GetPosts(qp, r)
+			},
+		))
+
+		restApi.POST("/profile/:profile_id/page/posts", withProfileId, withAuth, createHandler(
+			func(qp *query.Params, r *api.NewPostRequest) (api.NewPostResponse, httperr.Err) {
+				return service.NewPost(qp, r)
+			},
+		))
 	}
 
 	{
 		postGroup := restApi.Group("/post/:post_id")
-		postGroup.Use(query.WithPostId())
+		postGroup.Use(withPostId)
 		postGroup.GET("", createHandler(
 			func(qp *query.Params, r *api.Empty) (api.Post, httperr.Err) {
 				return service.GetPost(qp)
 			},
 		))
-
-		postAuthGroup := postGroup.Group("")
-		postAuthGroup.Use(query.WithAuth(&service.jwtVerifier))
-		postAuthGroup.PUT("", createHandler(
+		postGroup.PUT("", withAuth, createHandler(
 			func(qp *query.Params, r *api.EditPostRequest) (api.Empty, httperr.Err) {
 				return api.Empty{}, service.EditPost(qp, r)
 			},
 		))
-		postAuthGroup.DELETE("", createHandler(
+		postGroup.DELETE("", withAuth, createHandler(
 			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
 				return api.Empty{}, service.DeletePost(qp)
 			},
 		))
+	}
 
-		postAuthGroup.POST("/comments", createHandler(
+	{
+		restApi.POST("/post/:post_id/comments", withPostId, withAuth, createHandler(
 			func(qp *query.Params, r *api.NewCommentRequest) (api.NewCommentResponse, httperr.Err) {
 				return service.NewComment(qp, r)
 			},
 		))
 	}
-
-	restApi.POST("/auth", createHandler(
-		func(qp *query.Params, r *api.AuthenticateRequest) (api.AuthenticateResponse, httperr.Err) {
-			return service.Authenticate(qp, r)
-		},
-	))
-
-	restApi.POST("/api_token", createHandler(
-		func(qp *query.Params, r *api.CreateApiTokenRequest) (api.CreateApiTokenResponse, httperr.Err) {
-			return service.CreateApiToken(qp, r)
-		},
-	))
 
 	return httpRouter{router}
 }
