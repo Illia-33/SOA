@@ -140,6 +140,12 @@ func newHttpRouter(service *GatewayService) httpRouter {
 				return service.NewComment(qp, r)
 			},
 		))
+		restApi.GET("/post/:post_id/comments", withPostId, createHandler(
+			func(qp *query.Params, r *api.GetCommentsRequest) (api.GetCommentsResponse, httperr.Err) {
+				return service.GetComments(qp, r)
+			},
+		))
+
 		restApi.POST("/post/:post_id/views", withPostId, withAuth, createHandler(func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
 			return api.Empty{}, service.NewView(qp)
 		}))

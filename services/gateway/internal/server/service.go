@@ -404,6 +404,40 @@ func (s *GatewayService) NewComment(qp *query.Params, req *api.NewCommentRequest
 	}, httperr.Ok()
 }
 
+func commentFromProto(proto *postsPb.Comment) api.Comment {
+	return api.Comment{
+		Id:             proto.Id,
+		AuthorId:       proto.AuthorAccountId,
+		Content:        proto.Content,
+		ReplyCommentId: types.OptionalFromPointer(proto.ReplyCommentId),
+	}
+}
+
+func (s *GatewayService) GetComments(qp *query.Params, req *api.GetCommentsRequest) (api.GetCommentsResponse, httperr.Err) {
+	stub, err := s.createPostsStub(qp)
+	if err != nil {
+		return api.GetCommentsResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := stub.GetComments(context.Background(), &postsPb.GetCommentsRequest{
+		PostId:    qp.PostId,
+		PageToken: req.PageToken,
+	})
+	if err != nil {
+		return api.GetCommentsResponse{}, httperr.FromGrpcError(err)
+	}
+
+	comments := make([]api.Comment, len(resp.Comments))
+	for i, comment := range resp.Comments {
+		comments[i] = commentFromProto(comment)
+	}
+
+	return api.GetCommentsResponse{
+		Comments:      comments,
+		NextPageToken: resp.NextPageToken,
+	}, httperr.Ok()
+}
+
 func (s *GatewayService) NewView(qp *query.Params) httperr.Err {
 	stub, err := s.createPostsStub(qp)
 	if err != nil {
