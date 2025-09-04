@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS outbox (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    is_processed BOOLEAN NOT NULL DEFAULT FALSE,
+    event_type VARCHAR(64) NOT NULL,
+    payload JSONB NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_outbox_event_type_and_created_at ON outbox(event_type, created_at);
+
+CREATE OR REPLACE TRIGGER on_outbox_update
+BEFORE UPDATE ON profiles
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
