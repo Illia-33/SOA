@@ -8,6 +8,6 @@ CREATE TABLE IF NOT EXISTS outbox (
 );
 
 CREATE OR REPLACE TRIGGER on_outbox_update
-BEFORE UPDATE ON profiles
+BEFORE UPDATE ON outbox
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
