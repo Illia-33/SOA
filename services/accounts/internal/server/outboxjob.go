@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"log"
-	"soa-socialnetwork/services/accounts/internal/server/backjob"
+	"soa-socialnetwork/services/common/backjob"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"

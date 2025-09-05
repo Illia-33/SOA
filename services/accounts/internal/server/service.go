@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"soa-socialnetwork/services/accounts/internal/server/backjob"
 	"soa-socialnetwork/services/accounts/internal/server/soajwtissuer"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	pb "soa-socialnetwork/services/accounts/proto"
+	"soa-socialnetwork/services/common/backjob"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
