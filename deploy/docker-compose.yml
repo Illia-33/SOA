@@ -4,7 +4,10 @@ services:
       dockerfile: ${PWD}/services/gateway/Dockerfile
     container_name: gateway-service
     depends_on:
-      - accounts
+      accounts:
+        condition: service_started
+      posts:
+        condition: service_started
     environment:
       GATEWAY_SERVICE_PORT: ${GATEWAY_SERVICE_PORT}
       JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
@@ -14,7 +17,7 @@ services:
       POSTS_SERVICE_PORT: ${POSTS_SERVICE_PORT}
     ports:
       - "${GATEWAY_SERVICE_PORT}:${GATEWAY_SERVICE_PORT}"
-  
+
   accounts-postgres:
     image: postgres:17-alpine
     container_name: accounts-postgres
@@ -30,14 +33,17 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-      start_period: 30s
-  
+      start_period: 5s
+
   accounts:
     build:
       dockerfile: ${PWD}/services/accounts/Dockerfile
     container_name: accounts-service
     depends_on:
-      - accounts-postgres
+      accounts-postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     environment:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
       DB_HOST: "accounts-postgres"
@@ -61,14 +67,15 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 5s
 
   posts:
     build:
       dockerfile: ${PWD}/services/posts/Dockerfile
     container_name: posts-service
     depends_on:
-      - posts-postgres
+      posts-postgres:
+        condition: service_healthy
     environment:
       POSTS_SERVICE_PORT: ${POSTS_SERVICE_PORT}
       DB_HOST: "posts-postgres"
@@ -76,5 +83,16 @@ services:
       DB_PASSWORD: ${POSTS_POSTGRES_PASSWORD}
       DB_POOL_SIZE: 5
       JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
-    ports:
-      - ${POSTS_SERVICE_PORT}:${POSTS_SERVICE_PORT}
+
+  kafka:
+    image: apache/kafka:4.1.0
+    container_name: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
