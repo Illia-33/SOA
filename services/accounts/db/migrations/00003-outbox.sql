@@ -7,8 +7,6 @@ CREATE TABLE IF NOT EXISTS outbox (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_outbox_event_type_and_created_at ON outbox(event_type, created_at);
-
 CREATE OR REPLACE TRIGGER on_outbox_update
 BEFORE UPDATE ON profiles
 FOR EACH ROW
