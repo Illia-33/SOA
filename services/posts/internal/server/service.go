@@ -2,13 +2,16 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
+	"soa-socialnetwork/services/common/backjob"
 	opt "soa-socialnetwork/services/common/option"
 	dom "soa-socialnetwork/services/posts/internal/domain"
 	"soa-socialnetwork/services/posts/internal/repos"
 	"soa-socialnetwork/services/posts/internal/server/interceptors"
 	"soa-socialnetwork/services/posts/internal/storage/postgres"
 	pb "soa-socialnetwork/services/posts/proto"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,12 +22,14 @@ type repositories struct {
 	Posts    repos.PostsRepository
 	Comments repos.CommentsRepository
 	Metrics  repos.MetricsRepository
+	Outbox   repos.OutboxRepository
 }
 
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
 	storage     repositories
+	outboxJob   backjob.TickerJob
 	jwtVerifier soajwt.Verifier
 }
 
@@ -40,15 +45,25 @@ func newPostsService(cfg PostsServiceConfig) (PostsService, error) {
 		return PostsService{}, err
 	}
 
+	storage := repositories{
+		Pages:    &postgres.PageRepo{ConnPool: pgPool},
+		Posts:    &postgres.PostsRepo{ConnPool: pgPool},
+		Comments: &postgres.CommentsRepo{ConnPool: pgPool},
+		Metrics:  &postgres.MetricsRepo{ConnPool: pgPool},
+		Outbox:   &postgres.OutboxRepo{ConnPool: pgPool},
+	}
+
+	outboxJobCallback := newCheckOutboxCallback(storage.Outbox, 100)
+
 	return PostsService{
-		storage: repositories{
-			Pages:    &postgres.PageRepo{ConnPool: pgPool},
-			Posts:    &postgres.PostsRepo{ConnPool: pgPool},
-			Comments: &postgres.CommentsRepo{ConnPool: pgPool},
-			Metrics:  &postgres.MetricsRepo{ConnPool: pgPool},
-		},
+		storage:     storage,
+		outboxJob:   backjob.NewTickerJob(3*time.Second, outboxJobCallback),
 		jwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
 	}, nil
+}
+
+func (s *PostsService) Start() {
+	s.outboxJob.Run()
 }
 
 func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSettingsRequest) (*pb.Empty, error) {
@@ -332,6 +347,14 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 		return nil, err
 	}
 
+	err = s.storage.Outbox.Put(ctx, dom.OutboxEvent{
+		Type:    "view",
+		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.Empty{}, nil
 }
 
@@ -343,6 +366,14 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
 	err := s.storage.Metrics.NewLike(ctx, authorizedId, dom.PostId(req.PostId))
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.storage.Outbox.Put(ctx, dom.OutboxEvent{
+		Type:    "like",
+		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
+	})
 	if err != nil {
 		return nil, err
 	}

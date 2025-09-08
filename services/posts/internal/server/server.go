@@ -11,7 +11,7 @@ import (
 
 type PostsServer struct {
 	grpcServer *grpc.Server
-	service    pb.PostsServiceServer
+	service    *PostsService
 	port       int
 }
 
@@ -21,6 +21,7 @@ func (s *PostsServer) Run() error {
 		return err
 	}
 
+	s.service.Start()
 	return s.grpcServer.Serve(lis)
 }
 

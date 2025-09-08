@@ -10,6 +10,8 @@ type PageId int32
 type PostId int32
 type CommentId int32
 type Text string
+type OutboxEventType string
+type OutboxEventPayload string
 
 type Page struct {
 	Id                     PageId
@@ -41,4 +43,9 @@ type Comment struct {
 	Content   Text
 	ReplyId   opt.Option[CommentId]
 	CreatedAt time.Time
+}
+
+type OutboxEvent struct {
+	Type    string
+	Payload OutboxEventPayload
 }
