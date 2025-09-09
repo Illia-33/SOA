@@ -8,23 +8,23 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewPoolScopeOpener(cfg ConnectionConfig) (poolScopeOpener, error) {
+func NewPoolDatabase(cfg ConnectionConfig) (poolDatabase, error) {
 	pool, err := newPool(cfg)
 	if err != nil {
-		return poolScopeOpener{}, err
+		return poolDatabase{}, err
 	}
 
-	return poolScopeOpener{
-		connectionPool: pool,
+	return poolDatabase{
+		connPool: pool,
 	}, nil
 }
 
-type poolScopeOpener struct {
-	connectionPool connectionPool
+type poolDatabase struct {
+	connPool connectionPool
 }
 
-func (o *poolScopeOpener) OpenConnection(ctx context.Context) (repos.Connection, error) {
-	conn, err := o.connectionPool.Pool.Acquire(ctx)
+func (o *poolDatabase) OpenConnection(ctx context.Context) (repos.Connection, error) {
+	conn, err := o.connPool.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +35,8 @@ func (o *poolScopeOpener) OpenConnection(ctx context.Context) (repos.Connection,
 	}, nil
 }
 
-func (o *poolScopeOpener) BeginTransaction(ctx context.Context) (repos.Transaction, error) {
-	conn, err := o.connectionPool.Pool.Acquire(ctx)
+func (o *poolDatabase) BeginTransaction(ctx context.Context) (repos.Transaction, error) {
+	conn, err := o.connPool.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -101,23 +101,11 @@ type transaction struct {
 }
 
 func (c transaction) Commit() error {
-	err := c.tx.Commit(c.ctx)
-	if err != nil {
-		return err
-	}
-
-	c.conn.Release()
-	return nil
+	return c.tx.Commit(c.ctx)
 }
 
 func (c transaction) Rollback() error {
-	err := c.tx.Rollback(c.ctx)
-	if err != nil {
-		return err
-	}
-
-	c.conn.Release()
-	return nil
+	return c.tx.Rollback(c.ctx)
 }
 
 func (c transaction) Close() error {
