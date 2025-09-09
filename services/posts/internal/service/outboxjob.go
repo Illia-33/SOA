@@ -51,10 +51,11 @@ func newCheckOutboxCallback(db repos.Database, eventsPerCall int) backjob.JobCal
 			messages[i] = kafka.Message{
 				Topic: event.Type,
 				Value: []byte(event.Payload),
+				Time:  event.CreatedAt,
 			}
 		}
 
-		err = kafkaWriter.WriteMessages(ctx)
+		err = kafkaWriter.WriteMessages(ctx, messages...)
 		if err != nil {
 			tx.Rollback()
 			return err
