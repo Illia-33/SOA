@@ -32,10 +32,10 @@ type Connection interface {
 	Close() error
 }
 
-// RepoScopeOpener constructs units of work that provide scoped repository access.
+// Database constructs units of work that provide scoped repository access.
 // BeginTransaction starts a transactional unit; OpenConnection opens a non-transactional scope.
 // The provided context carries deadlines and cancellation to the underlying driver.
-type RepoScopeOpener interface {
+type Database interface {
 	OpenConnection(context.Context) (Connection, error)
 	BeginTransaction(context.Context) (Transaction, error)
 }

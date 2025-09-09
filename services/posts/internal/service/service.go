@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	opt "soa-socialnetwork/services/common/option"
 	dom "soa-socialnetwork/services/posts/internal/domain"
 	"soa-socialnetwork/services/posts/internal/repos"
-	"soa-socialnetwork/services/posts/internal/server/interceptors"
+	"soa-socialnetwork/services/posts/internal/service/interceptors"
 	"soa-socialnetwork/services/posts/internal/storage/postgres"
 	pb "soa-socialnetwork/services/posts/proto"
 	"time"
@@ -20,13 +20,13 @@ import (
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
-	Db          repos.RepoScopeOpener
+	Db          repos.Database
 	JwtVerifier soajwt.Verifier
 
 	outboxJob backjob.TickerJob
 }
 
-func newPostsService(cfg PostsServiceConfig) (PostsService, error) {
+func New(cfg PostsServiceConfig) (PostsService, error) {
 	db, err := postgres.NewPoolScopeOpener(postgres.ConnectionConfig{
 		Host:     cfg.DbHost,
 		User:     cfg.DbUser,

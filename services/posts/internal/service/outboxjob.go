@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-func newCheckOutboxCallback(db repos.RepoScopeOpener, eventsPerCall int) backjob.JobCallback {
+func newCheckOutboxCallback(db repos.Database, eventsPerCall int) backjob.JobCallback {
 	kafkaWriter := kafka.Writer{
 		Addr:                   kafka.TCP("kafka:9092"),
 		RequiredAcks:           kafka.RequireAll,

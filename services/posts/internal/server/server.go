@@ -3,7 +3,8 @@ package server
 import (
 	"fmt"
 	"net"
-	"soa-socialnetwork/services/posts/internal/server/interceptors"
+	"soa-socialnetwork/services/posts/internal/service"
+	"soa-socialnetwork/services/posts/internal/service/interceptors"
 	pb "soa-socialnetwork/services/posts/proto"
 
 	"google.golang.org/grpc"
@@ -11,7 +12,7 @@ import (
 
 type PostsServer struct {
 	grpcServer *grpc.Server
-	service    *PostsService
+	service    *service.PostsService
 	port       int
 }
 
@@ -25,8 +26,8 @@ func (s *PostsServer) Run() error {
 	return s.grpcServer.Serve(lis)
 }
 
-func Create(cfg PostsServiceConfig) (PostsServer, error) {
-	service, err := newPostsService(cfg)
+func Create(cfg service.PostsServiceConfig) (PostsServer, error) {
+	service, err := service.New(cfg)
 	if err != nil {
 		return PostsServer{}, err
 	}
