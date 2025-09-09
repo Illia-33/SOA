@@ -380,21 +380,28 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	conn, err := s.Db.OpenConnection(ctx)
+	tx, err := s.Db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer tx.Close()
 
-	err = conn.Metrics().NewView(authorizedId, dom.PostId(req.PostId))
+	err = tx.Metrics().NewView(authorizedId, dom.PostId(req.PostId))
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	err = conn.Outbox().Put(dom.OutboxEvent{
+	err = tx.Outbox().Put(dom.OutboxEvent{
 		Type:    "view",
 		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
 	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -409,21 +416,28 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	conn, err := s.Db.OpenConnection(ctx)
+	tx, err := s.Db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer tx.Close()
 
-	err = conn.Metrics().NewLike(authorizedId, dom.PostId(req.PostId))
+	err = tx.Metrics().NewLike(authorizedId, dom.PostId(req.PostId))
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	err = conn.Outbox().Put(dom.OutboxEvent{
+	err = tx.Outbox().Put(dom.OutboxEvent{
 		Type:    "like",
 		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
 	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
