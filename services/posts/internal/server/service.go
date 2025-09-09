@@ -20,9 +20,10 @@ import (
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
-	db          repos.RepoScopeOpener
-	outboxJob   backjob.TickerJob
-	jwtVerifier soajwt.Verifier
+	Db          repos.RepoScopeOpener
+	JwtVerifier soajwt.Verifier
+
+	outboxJob backjob.TickerJob
 }
 
 func newPostsService(cfg PostsServiceConfig) (PostsService, error) {
@@ -37,16 +38,15 @@ func newPostsService(cfg PostsServiceConfig) (PostsService, error) {
 		return PostsService{}, err
 	}
 
-	outboxJobCallback := newCheckOutboxCallback(&db, 100)
-
 	return PostsService{
-		db:          &db,
-		outboxJob:   backjob.NewTickerJob(3*time.Second, outboxJobCallback),
-		jwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
+		Db:          &db,
+		JwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
 	}, nil
 }
 
 func (s *PostsService) Start() {
+	outboxJobCallback := newCheckOutboxCallback(s.Db, 100)
+	s.outboxJob = backjob.NewTickerJob(3*time.Second, outboxJobCallback)
 	s.outboxJob.Run()
 }
 
@@ -60,7 +60,7 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 }
 
 func (s *PostsService) GetPageSettings(ctx context.Context, req *pb.GetPageSettingsRequest) (*pb.GetPageSettingsResponse, error) {
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 }
 
 func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsRequest) (*pb.GetCommentsResponse, error) {
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsReque
 }
 
 func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 }
 
 func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*pb.GetPostsResponse, error) {
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func (s *PostsService) EditPost(ctx context.Context, req *pb.EditPostRequest) (*
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +380,7 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +409,7 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	conn, err := s.db.OpenConnection(ctx)
+	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
 		return nil, err
 	}

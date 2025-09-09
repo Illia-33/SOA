@@ -33,7 +33,7 @@ func Create(cfg PostsServiceConfig) (PostsServer, error) {
 
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			interceptors.WithAuth(&service.jwtVerifier),
+			interceptors.WithAuth(&service.JwtVerifier),
 		),
 	)
 
