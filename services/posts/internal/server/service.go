@@ -17,14 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type repositories struct {
-	Pages    repos.PagesRepository
-	Posts    repos.PostsRepository
-	Comments repos.CommentsRepository
-	Metrics  repos.MetricsRepository
-	Outbox   repos.OutboxRepository
-}
-
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
