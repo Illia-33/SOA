@@ -42,7 +42,7 @@ services:
     depends_on:
       accounts-postgres:
         condition: service_healthy
-      kafka:
+      statistics-kafka:
         condition: service_started
     environment:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
@@ -84,9 +84,9 @@ services:
       DB_POOL_SIZE: 5
       JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
 
-  kafka:
+  statistics-kafka:
     image: apache/kafka:4.1.0
-    container_name: kafka
+    container_name: statistics-kafka
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
