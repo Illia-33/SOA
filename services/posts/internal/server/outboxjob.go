@@ -5,22 +5,40 @@ import (
 	"log"
 	"soa-socialnetwork/services/common/backjob"
 	"soa-socialnetwork/services/posts/internal/repos"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
 
-func newCheckOutboxCallback(outbox repos.OutboxRepository, eventsPerCall int) backjob.JobCallback {
+func newCheckOutboxCallback(db repos.RepoScopeOpener, eventsPerCall int) backjob.JobCallback {
 	kafkaWriter := kafka.Writer{
 		Addr:                   kafka.TCP("kafka:9092"),
 		RequiredAcks:           kafka.RequireAll,
 		AllowAutoTopicCreation: true,
 	}
+
+	lastCreatedAt := time.Time{}
+
 	return func(ctx context.Context) error {
-		events, tx, err := outbox.Fetch(ctx, repos.OutboxFetchParams{
-			Limit: eventsPerCall,
-		})
+		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
 			return err
+		}
+		defer tx.Close()
+
+		events, err := tx.Outbox().Fetch(repos.OutboxFetchParams{
+			Limit:         eventsPerCall,
+			LastCreatedAt: lastCreatedAt,
+		})
+
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if len(events) == 0 {
+			tx.Rollback()
+			return nil
 		}
 
 		log.Println("got events")
@@ -38,13 +56,16 @@ func newCheckOutboxCallback(outbox repos.OutboxRepository, eventsPerCall int) ba
 
 		err = kafkaWriter.WriteMessages(ctx)
 		if err != nil {
-			rollbackErr := tx.Rollback(ctx)
-			if rollbackErr != nil {
-				log.Printf("warning: cannot rollback outbox transaction: %v", rollbackErr)
-			}
+			tx.Rollback()
 			return err
 		}
 
-		return tx.Commit(ctx)
+		err = tx.Commit()
+		if err != nil {
+			return err
+		}
+
+		lastCreatedAt = events[len(events)-1].CreatedAt
+		return nil
 	}
 }

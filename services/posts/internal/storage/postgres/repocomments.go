@@ -11,11 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CommentsRepo struct {
-	ConnPool connectionPool
+type commentsRepo struct {
+	ctx   context.Context
+	scope pgxScope
 }
 
-func (r *CommentsRepo) New(ctx context.Context, postId dom.PostId, data repos.NewCommentData) (dom.CommentId, error) {
+func (r commentsRepo) New(postId dom.PostId, data repos.NewCommentData) (dom.CommentId, error) {
 	sql := `
 	INSERT INTO comments(post_id, author_account_id, text_content, reply_comment_id)
 	VALUES ($1, $2, $3, $4)
@@ -23,7 +24,7 @@ func (r *CommentsRepo) New(ctx context.Context, postId dom.PostId, data repos.Ne
 	`
 
 	pgReplyCommentId := pgtype.Int4{Int32: int32(data.ReplyCommentId.Value), Valid: data.ReplyCommentId.HasValue}
-	row := r.ConnPool.QueryRow(ctx, sql, postId, data.AuthorId, data.Content, pgReplyCommentId)
+	row := r.scope.QueryRow(r.ctx, sql, postId, data.AuthorId, data.Content, pgReplyCommentId)
 
 	var id dom.CommentId
 	err := row.Scan(&id)
@@ -51,7 +52,7 @@ func encodeCommentsPagiToken(token commentsPagiToken) (repos.PagiToken, error) {
 	return encodePagiToken(token)
 }
 
-func (r *CommentsRepo) List(ctx context.Context, postId dom.PostId, encodedPagiToken repos.PagiToken) (repos.CommentsList, error) {
+func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) (repos.CommentsList, error) {
 	pagiToken, err := decodeCommentsPagiToken(encodedPagiToken)
 	if err != nil {
 		return repos.CommentsList{}, err
@@ -65,7 +66,7 @@ func (r *CommentsRepo) List(ctx context.Context, postId dom.PostId, encodedPagiT
 	LIMIT %d;
 	`, COMMENTS_PAGE_SIZE)
 
-	rows, err := r.ConnPool.Query(ctx, sql, postId, pagiToken.LastId)
+	rows, err := r.scope.Query(r.ctx, sql, postId, pagiToken.LastId)
 	if err != nil {
 		return repos.CommentsList{}, err
 	}

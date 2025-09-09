@@ -1,17 +1,16 @@
 package repos
 
 import (
-	"context"
 	opt "soa-socialnetwork/services/common/option"
 	dom "soa-socialnetwork/services/posts/internal/domain"
 )
 
 type PostsRepository interface {
-	New(context.Context, dom.PageId, NewPostData) (dom.PostId, error)
-	List(context.Context, dom.PageId, PagiToken) (PostsList, error)
-	Get(context.Context, dom.PostId) (dom.Post, error)
-	Edit(context.Context, dom.PostId, EditedPostData) error
-	Delete(context.Context, dom.PostId) error
+	New(dom.PageId, NewPostData) (dom.PostId, error)
+	List(dom.PageId, PagiToken) (PostsList, error)
+	Get(dom.PostId) (dom.Post, error)
+	Edit(dom.PostId, EditedPostData) error
+	Delete(dom.PostId) error
 }
 
 type NewPostData struct {

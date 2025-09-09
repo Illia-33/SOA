@@ -14,11 +14,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type PostsRepo struct {
-	ConnPool connectionPool
+type postsRepo struct {
+	ctx   context.Context
+	scope pgxScope
 }
 
-func (r *PostsRepo) New(ctx context.Context, pageId dom.PageId, data repos.NewPostData) (dom.PostId, error) {
+func (r postsRepo) New(pageId dom.PageId, data repos.NewPostData) (dom.PostId, error) {
 	sql := `
 	INSERT INTO posts(page_id, author_account_id, text_content, source_post_id)
 	VALUES ($1, $2, $3, $4)
@@ -27,7 +28,7 @@ func (r *PostsRepo) New(ctx context.Context, pageId dom.PageId, data repos.NewPo
 
 	pgSourcePostId := pgtype.Int4{Int32: int32(data.Content.SourcePostId.Value), Valid: data.Content.SourcePostId.HasValue}
 
-	row := r.ConnPool.QueryRow(ctx, sql, pageId, data.AuthorId, data.Content.Text, pgSourcePostId)
+	row := r.scope.QueryRow(r.ctx, sql, pageId, data.AuthorId, data.Content.Text, pgSourcePostId)
 	var postId dom.PostId
 	err := row.Scan(&postId)
 	if err != nil {
@@ -56,7 +57,7 @@ func encodePostsPagiToken(token postsPagiToken) (repos.PagiToken, error) {
 	return encodePagiToken(token)
 }
 
-func (r *PostsRepo) List(ctx context.Context, pageId dom.PageId, encodedPagiToken repos.PagiToken) (repos.PostsList, error) {
+func (r postsRepo) List(pageId dom.PageId, encodedPagiToken repos.PagiToken) (repos.PostsList, error) {
 	sql := fmt.Sprintf(`
 	SELECT id, author_account_id, text_content, source_post_id, pinned, views_count, created_at
 	FROM posts
@@ -70,7 +71,7 @@ func (r *PostsRepo) List(ctx context.Context, pageId dom.PageId, encodedPagiToke
 		return repos.PostsList{}, err
 	}
 
-	rows, err := r.ConnPool.Query(ctx, sql, pageId, pagiToken.LastCreatedAt)
+	rows, err := r.scope.Query(r.ctx, sql, pageId, pagiToken.LastCreatedAt)
 	if err != nil {
 		return repos.PostsList{}, err
 	}
@@ -119,7 +120,7 @@ func (r *PostsRepo) List(ctx context.Context, pageId dom.PageId, encodedPagiToke
 	}, nil
 }
 
-func (r *PostsRepo) Get(ctx context.Context, postId dom.PostId) (dom.Post, error) {
+func (r postsRepo) Get(postId dom.PostId) (dom.Post, error) {
 	sql := `
 	SELECT page_id, author_account_id, text_content, source_post_id, pinned, views_count, created_at
 	FROM posts
@@ -129,7 +130,7 @@ func (r *PostsRepo) Get(ctx context.Context, postId dom.PostId) (dom.Post, error
 	var post dom.Post
 	var pgSourcePostId pgtype.Int4
 
-	row := r.ConnPool.QueryRow(ctx, sql, postId)
+	row := r.scope.QueryRow(r.ctx, sql, postId)
 	err := row.Scan(&post.PageId, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.ViewsCount, &post.CreatedAt)
 	if err != nil {
 		return dom.Post{}, err
@@ -144,7 +145,7 @@ func (r *PostsRepo) Get(ctx context.Context, postId dom.PostId) (dom.Post, error
 	return post, nil
 }
 
-func (r *PostsRepo) Edit(ctx context.Context, postId dom.PostId, edited repos.EditedPostData) error {
+func (r postsRepo) Edit(postId dom.PostId, edited repos.EditedPostData) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE posts
@@ -165,7 +166,7 @@ func (r *PostsRepo) Edit(ctx context.Context, postId dom.PostId, edited repos.Ed
 		Valid: edited.Pinned.HasValue,
 	}
 
-	row := r.ConnPool.QueryRow(ctx, sql, pgTextContent, pgPinned, postId)
+	row := r.scope.QueryRow(r.ctx, sql, pgTextContent, pgPinned, postId)
 	var countAffected int
 	if err := row.Scan(&countAffected); err != nil {
 		return err
@@ -182,7 +183,7 @@ func (r *PostsRepo) Edit(ctx context.Context, postId dom.PostId, edited repos.Ed
 	return nil
 }
 
-func (r *PostsRepo) Delete(ctx context.Context, postId dom.PostId) error {
+func (r postsRepo) Delete(postId dom.PostId) error {
 	sql := `
 	WITH affected_rows AS (
 		DELETE FROM posts
@@ -192,7 +193,7 @@ func (r *PostsRepo) Delete(ctx context.Context, postId dom.PostId) error {
 	SELECT count(*) FROM affected_rows;
 	`
 
-	row := r.ConnPool.QueryRow(ctx, sql, postId)
+	row := r.scope.QueryRow(r.ctx, sql, postId)
 	var countAffected int
 	if err := row.Scan(&countAffected); err != nil {
 		return err

@@ -1,15 +1,16 @@
 package repos
 
 import (
-	"context"
 	dom "soa-socialnetwork/services/posts/internal/domain"
+	"time"
 )
 
 type OutboxRepository interface {
-	Put(context.Context, dom.OutboxEvent) error
-	Fetch(context.Context, OutboxFetchParams) ([]dom.OutboxEvent, Transaction, error)
+	Put(dom.OutboxEvent) error
+	Fetch(OutboxFetchParams) ([]dom.OutboxEvent, error)
 }
 
 type OutboxFetchParams struct {
-	Limit int
+	Limit         int
+	LastCreatedAt time.Time
 }

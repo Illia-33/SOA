@@ -46,6 +46,7 @@ type Comment struct {
 }
 
 type OutboxEvent struct {
-	Type    string
-	Payload OutboxEventPayload
+	Type      string
+	Payload   OutboxEventPayload
+	CreatedAt time.Time
 }

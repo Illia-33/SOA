@@ -28,13 +28,13 @@ type repositories struct {
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
-	storage     repositories
+	db          repos.RepoScopeOpener
 	outboxJob   backjob.TickerJob
 	jwtVerifier soajwt.Verifier
 }
 
 func newPostsService(cfg PostsServiceConfig) (PostsService, error) {
-	pgPool, err := postgres.NewPool(postgres.ConnectionConfig{
+	db, err := postgres.NewPoolScopeOpener(postgres.ConnectionConfig{
 		Host:     cfg.DbHost,
 		User:     cfg.DbUser,
 		Password: cfg.DbPassword,
@@ -45,18 +45,10 @@ func newPostsService(cfg PostsServiceConfig) (PostsService, error) {
 		return PostsService{}, err
 	}
 
-	storage := repositories{
-		Pages:    &postgres.PageRepo{ConnPool: pgPool},
-		Posts:    &postgres.PostsRepo{ConnPool: pgPool},
-		Comments: &postgres.CommentsRepo{ConnPool: pgPool},
-		Metrics:  &postgres.MetricsRepo{ConnPool: pgPool},
-		Outbox:   &postgres.OutboxRepo{ConnPool: pgPool},
-	}
-
-	outboxJobCallback := newCheckOutboxCallback(storage.Outbox, 100)
+	outboxJobCallback := newCheckOutboxCallback(&db, 100)
 
 	return PostsService{
-		storage:     storage,
+		db:          &db,
 		outboxJob:   backjob.NewTickerJob(3*time.Second, outboxJobCallback),
 		jwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
 	}, nil
@@ -76,13 +68,19 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
-	pageData, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.AccountId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.AccountId))
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.storage.Pages.Edit(ctx, pageData.Id, repos.EditedPageSettings{
+	err = conn.Pages().Edit(pageData.Id, repos.EditedPageSettings{
 		VisibleForUnauthorized: opt.FromPointer(req.VisibleForUnauthorized),
 		CommentsEnabled:        opt.FromPointer(req.CommentsEnabled),
 		AnyoneCanPost:          opt.FromPointer(req.AnyoneCanPost),
@@ -96,7 +94,13 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 }
 
 func (s *PostsService) GetPageSettings(ctx context.Context, req *pb.GetPageSettingsRequest) (*pb.GetPageSettingsResponse, error) {
-	pageSettings, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.AccountId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	pageSettings, err := conn.Pages().GetByAccountId(dom.AccountId(req.AccountId))
 
 	if err != nil {
 		return nil, err
@@ -116,7 +120,13 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	pageData, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.PageAccountId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
 
 	if err != nil {
 		return nil, err
@@ -128,7 +138,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 		}
 	}
 
-	postId, err := s.storage.Posts.New(ctx, pageData.Id, repos.NewPostData{
+	postId, err := conn.Posts().New(pageData.Id, repos.NewPostData{
 		AuthorId: authorId,
 		Content: dom.PostContent{
 			Text:         dom.Text(req.Text),
@@ -152,7 +162,13 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	pageData, err := s.storage.Pages.GetByPostId(ctx, dom.PostId(req.PostId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +177,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 		return nil, status.Error(codes.PermissionDenied, "comments prohibited")
 	}
 
-	commentId, err := s.storage.Comments.New(ctx, dom.PostId(req.PostId), repos.NewCommentData{
+	commentId, err := conn.Comments().New(dom.PostId(req.PostId), repos.NewCommentData{
 		AuthorId:       authorId,
 		Content:        dom.Text(req.Content),
 		ReplyCommentId: opt.FromPointer((*dom.CommentId)(req.ReplyCommentId)),
@@ -177,9 +193,15 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 }
 
 func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsRequest) (*pb.GetCommentsResponse, error) {
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
 	authorizedId := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
 	if authorizedId == nil {
-		pageData, err := s.storage.Pages.GetByPostId(ctx, dom.PostId(req.PostId))
+		pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
 
 		if err != nil {
 			return nil, err
@@ -190,7 +212,7 @@ func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsReque
 		}
 	}
 
-	commentsList, err := s.storage.Comments.List(ctx, dom.PostId(req.PostId), repos.PagiToken(req.PageToken))
+	commentsList, err := conn.Comments().List(dom.PostId(req.PostId), repos.PagiToken(req.PageToken))
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +234,13 @@ func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsReque
 }
 
 func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
-	pageData, err := s.storage.Pages.GetByPostId(ctx, dom.PostId(req.PostId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +250,7 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
 	}
 
-	post, err := s.storage.Posts.Get(ctx, dom.PostId(req.PostId))
+	post, err := conn.Posts().Get(dom.PostId(req.PostId))
 
 	if err != nil {
 		return nil, err
@@ -239,7 +267,13 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 }
 
 func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*pb.GetPostsResponse, error) {
-	pageData, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.PageAccountId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +283,7 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
 	}
 
-	postsList, err := s.storage.Posts.List(ctx, pageData.Id, repos.PagiToken(req.PageToken))
+	postsList, err := conn.Posts().List(pageData.Id, repos.PagiToken(req.PageToken))
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +312,13 @@ func (s *PostsService) EditPost(ctx context.Context, req *pb.EditPostRequest) (*
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
-	post, err := s.storage.Posts.Get(ctx, dom.PostId(req.PostId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	post, err := conn.Posts().Get(dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +331,7 @@ func (s *PostsService) EditPost(ctx context.Context, req *pb.EditPostRequest) (*
 		return &pb.Empty{}, nil
 	}
 
-	err = s.storage.Posts.Edit(ctx, post.Id, repos.EditedPostData{
+	err = conn.Posts().Edit(post.Id, repos.EditedPostData{
 		Text:   opt.FromPointer((*dom.Text)(req.Text)),
 		Pinned: opt.FromPointer(req.Pinned),
 	})
@@ -310,13 +350,19 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	post, err := s.storage.Posts.Get(ctx, dom.PostId(req.PostId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	post, err := conn.Posts().Get(dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
 
 	if post.AuthorAccountId != authorizedId {
-		page, err := s.storage.Pages.GetByPageId(ctx, dom.PageId(post.PageId))
+		page, err := conn.Pages().GetByPageId(dom.PageId(post.PageId))
 
 		if err != nil {
 			return nil, err
@@ -327,7 +373,7 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 		}
 	}
 
-	err = s.storage.Posts.Delete(ctx, dom.PostId(req.PostId))
+	err = conn.Posts().Delete(dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -342,12 +388,18 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	err := s.storage.Metrics.NewView(ctx, authorizedId, dom.PostId(req.PostId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	err = conn.Metrics().NewView(authorizedId, dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.storage.Outbox.Put(ctx, dom.OutboxEvent{
+	err = conn.Outbox().Put(dom.OutboxEvent{
 		Type:    "view",
 		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
 	})
@@ -365,12 +417,18 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 	}
 	authorizedId := authorizedIdVal.(dom.AccountId)
 
-	err := s.storage.Metrics.NewLike(ctx, authorizedId, dom.PostId(req.PostId))
+	conn, err := s.db.OpenConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	err = conn.Metrics().NewLike(authorizedId, dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.storage.Outbox.Put(ctx, dom.OutboxEvent{
+	err = conn.Outbox().Put(dom.OutboxEvent{
 		Type:    "like",
 		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
 	})

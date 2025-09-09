@@ -9,11 +9,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type MetricsRepo struct {
-	ConnPool connectionPool
+type metricsRepo struct {
+	ctx   context.Context
+	scope pgxScope
 }
 
-func (r *MetricsRepo) NewView(ctx context.Context, accountId dom.AccountId, postId dom.PostId) error {
+func (r metricsRepo) NewView(accountId dom.AccountId, postId dom.PostId) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE posts
@@ -25,7 +26,7 @@ func (r *MetricsRepo) NewView(ctx context.Context, accountId dom.AccountId, post
 	SELECT count(*) FROM affected_rows;
 	`
 
-	row := r.ConnPool.QueryRow(ctx, sql, postId)
+	row := r.scope.QueryRow(r.ctx, sql, postId)
 	var countAffected int
 	if err := row.Scan(&countAffected); err != nil {
 		return err
@@ -42,13 +43,13 @@ func (r *MetricsRepo) NewView(ctx context.Context, accountId dom.AccountId, post
 	return nil
 }
 
-func (r *MetricsRepo) NewLike(ctx context.Context, accountId dom.AccountId, postId dom.PostId) error {
+func (r metricsRepo) NewLike(accountId dom.AccountId, postId dom.PostId) error {
 	sql := `
 	INSERT INTO likes(post_id, author_account_id)
 	VALUES ($1, $2)
 	`
 
-	_, err := r.ConnPool.Exec(ctx, sql, postId, accountId)
+	_, err := r.scope.Exec(r.ctx, sql, postId, accountId)
 	if err != nil {
 		return err
 	}

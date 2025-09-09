@@ -12,11 +12,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type PageRepo struct {
-	ConnPool connectionPool
+type pagesRepo struct {
+	ctx   context.Context
+	scope pgxScope
 }
 
-func (r *PageRepo) GetByAccountId(ctx context.Context, accountId dom.AccountId) (dom.Page, error) {
+func (r pagesRepo) GetByAccountId(accountId dom.AccountId) (dom.Page, error) {
 	sql := `
 	SELECT id, visible_for_unauthorized, comments_enabled, anyone_can_post
 	FROM pages
@@ -24,7 +25,7 @@ func (r *PageRepo) GetByAccountId(ctx context.Context, accountId dom.AccountId) 
 	`
 	var page dom.Page
 
-	row := r.ConnPool.QueryRow(ctx, sql, accountId)
+	row := r.scope.QueryRow(r.ctx, sql, accountId)
 	err := row.Scan(&page.Id, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err == nil { // ok, returning
 		page.AccountId = dom.AccountId(accountId)
@@ -38,7 +39,7 @@ func (r *PageRepo) GetByAccountId(ctx context.Context, accountId dom.AccountId) 
 	RETURNING id, visible_for_unauthorized, comments_enabled, anyone_can_post;
 	`
 
-	row = r.ConnPool.QueryRow(ctx, sql, accountId)
+	row = r.scope.QueryRow(r.ctx, sql, accountId)
 	err = row.Scan(&page.Id, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err != nil {
 		return dom.Page{}, err
@@ -48,7 +49,7 @@ func (r *PageRepo) GetByAccountId(ctx context.Context, accountId dom.AccountId) 
 	return page, nil
 }
 
-func (r *PageRepo) GetByPageId(ctx context.Context, pageId dom.PageId) (dom.Page, error) {
+func (r pagesRepo) GetByPageId(pageId dom.PageId) (dom.Page, error) {
 	sql := `
 	SELECT account_id, visible_for_unauthorized, comments_enabled, anyone_can_post
 	FROM pages
@@ -56,7 +57,7 @@ func (r *PageRepo) GetByPageId(ctx context.Context, pageId dom.PageId) (dom.Page
 	`
 	var page dom.Page
 
-	row := r.ConnPool.QueryRow(ctx, sql, pageId)
+	row := r.scope.QueryRow(r.ctx, sql, pageId)
 	err := row.Scan(&page.AccountId, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err != nil {
 		return dom.Page{}, status.Error(codes.NotFound, "page not found")
@@ -66,7 +67,7 @@ func (r *PageRepo) GetByPageId(ctx context.Context, pageId dom.PageId) (dom.Page
 	return page, nil
 }
 
-func (r *PageRepo) GetByPostId(ctx context.Context, postId dom.PostId) (dom.Page, error) {
+func (r pagesRepo) GetByPostId(postId dom.PostId) (dom.Page, error) {
 	sql := `
 	SELECT id, account_id, visible_for_unauthorized, comments_enabled, anyone_can_post
 	FROM pages
@@ -78,7 +79,7 @@ func (r *PageRepo) GetByPostId(ctx context.Context, postId dom.PostId) (dom.Page
 	`
 	var page dom.Page
 
-	row := r.ConnPool.QueryRow(ctx, sql, postId)
+	row := r.scope.QueryRow(r.ctx, sql, postId)
 	err := row.Scan(&page.Id, &page.AccountId, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err != nil {
 		return dom.Page{}, status.Error(codes.NotFound, "page not found")
@@ -87,7 +88,7 @@ func (r *PageRepo) GetByPostId(ctx context.Context, postId dom.PostId) (dom.Page
 	return page, nil
 }
 
-func (r *PageRepo) Edit(ctx context.Context, pageId dom.PageId, edited repos.EditedPageSettings) error {
+func (r pagesRepo) Edit(pageId dom.PageId, edited repos.EditedPageSettings) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE pages
@@ -105,7 +106,7 @@ func (r *PageRepo) Edit(ctx context.Context, pageId dom.PageId, edited repos.Edi
 	pgCommentsEnabled := pgtype.Bool{Bool: edited.CommentsEnabled.Value, Valid: edited.CommentsEnabled.HasValue}
 	pgAnyoneCanPost := pgtype.Bool{Bool: edited.AnyoneCanPost.Value, Valid: edited.AnyoneCanPost.HasValue}
 
-	row := r.ConnPool.QueryRow(ctx, sql, pgVisibleForUnauthorized, pgCommentsEnabled, pgAnyoneCanPost, pageId)
+	row := r.scope.QueryRow(r.ctx, sql, pgVisibleForUnauthorized, pgCommentsEnabled, pgAnyoneCanPost, pageId)
 	var count int
 	row.Scan(&count)
 	if count == 0 {
