@@ -30,6 +30,7 @@ func (o *poolScopeOpener) OpenConnection(ctx context.Context) (repos.Connection,
 	}
 
 	return poolConnection{
+		ctx:  ctx,
 		conn: conn,
 	}, nil
 }
