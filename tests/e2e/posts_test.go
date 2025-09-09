@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -74,6 +75,44 @@ func tryDeletePost(t *testing.T, postId int, auth string) *http.Response {
 func deletePostOk(t *testing.T, postId int, auth string) {
 	resp := tryDeletePost(t, postId, auth)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func tryNewView(t *testing.T, postId int, auth string) *http.Response {
+	return makeRequest(t, http.MethodPost, fmt.Sprintf("/post/%d/views", postId), nil, auth)
+}
+
+func newViewOk(t *testing.T, postId int, auth string) {
+	resp := tryNewView(t, postId, auth)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func tryNewLike(t *testing.T, postId int, auth string) *http.Response {
+	return makeRequest(t, http.MethodPost, fmt.Sprintf("/post/%d/likes", postId), nil, auth)
+}
+
+func newLikeOk(t *testing.T, postId int, auth string) {
+	resp := tryNewLike(t, postId, auth)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func tryNewComment(t *testing.T, postId int, newCommentRequest map[string]any, auth string) *http.Response {
+	return makeRequest(t, http.MethodPost, fmt.Sprintf("/post/%d/comments", postId), newCommentRequest, auth)
+}
+
+func newCommentOk(t *testing.T, postId int, newCommentRequest map[string]any, auth string) int {
+	resp := tryNewComment(t, postId, newCommentRequest, auth)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	return int(responseBodyToMap(t, resp)["comment_id"].(float64))
+}
+
+func tryGetComments(t *testing.T, postId int, getCommentsRequest map[string]any, auth string) *http.Response {
+	return makeRequest(t, http.MethodGet, fmt.Sprintf("/post/%d/comments", postId), getCommentsRequest, auth)
+}
+
+func getCommentsOk(t *testing.T, postId int, getCommentsRequest map[string]any, auth string) map[string]any {
+	resp := tryGetComments(t, postId, getCommentsRequest, auth)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	return responseBodyToMap(t, resp)
 }
 
 func TestEditPageSettings(t *testing.T) {
@@ -280,4 +319,135 @@ func TestDeletePost(t *testing.T) {
 	deletePostOk(t, postId, jwtAuth(token))
 	deleteResponse := tryGetPost(t, postId, jwtAuth(token))
 	require.Equal(t, http.StatusNotFound, deleteResponse.StatusCode)
+}
+
+func TestNewView(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "new_view",
+		"password":     "testpasswd",
+		"email":        "new_view@yahoo.com",
+		"phone_number": "+79250000018",
+		"name":         "New",
+		"surname":      "View",
+	})
+	token := authenticateOk(t, map[string]any{
+		"login":    "new_view",
+		"password": "testpasswd",
+	})
+
+	postId := createPostOk(t, id, map[string]any{"text": "post content"}, jwtAuth(token))
+	newViewOk(t, postId, jwtAuth(token))
+	post := getPostOk(t, postId, jwtAuth(token))
+	require.Equal(t, 1, int(post["views_count"].(float64)))
+}
+
+func TestNewLike(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "new_like",
+		"password":     "testpasswd",
+		"email":        "new_like@yahoo.com",
+		"phone_number": "+79250000019",
+		"name":         "New",
+		"surname":      "Like",
+	})
+	token := authenticateOk(t, map[string]any{
+		"login":    "new_like",
+		"password": "testpasswd",
+	})
+
+	postId := createPostOk(t, id, map[string]any{"text": "post content"}, jwtAuth(token))
+	newLikeOk(t, postId, jwtAuth(token))
+}
+
+func TestNewComment(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "new_comment",
+		"password":     "testpasswd",
+		"email":        "new_comment@yahoo.com",
+		"phone_number": "+79250000020",
+		"name":         "New",
+		"surname":      "Comment",
+	})
+	token := authenticateOk(t, map[string]any{
+		"login":    "new_comment",
+		"password": "testpasswd",
+	})
+
+	post := map[string]any{
+		"text": "new test post!",
+	}
+
+	postId := createPostOk(t, id, post, jwtAuth(token))
+
+	comment := map[string]any{
+		"content": "comment content",
+	}
+
+	newCommentOk(t, postId, comment, jwtAuth(token))
+}
+
+func TestGetComments(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "get_comments",
+		"password":     "testpasswd",
+		"email":        "get_comments@yahoo.com",
+		"phone_number": "+79250000021",
+		"name":         "Get",
+		"surname":      "Comments",
+	})
+	token := authenticateOk(t, map[string]any{
+		"login":    "get_comments",
+		"password": "testpasswd",
+	})
+
+	post := map[string]any{
+		"text": "test comments pagination post",
+	}
+
+	postId := createPostOk(t, id, post, jwtAuth(token))
+
+	const comments_count = 37
+	publishedComments := make([]map[string]any, 0, comments_count)
+	for i := range comments_count {
+		comment := map[string]any{
+			"content": fmt.Sprintf("comment number %d", i),
+		}
+
+		commentId := newCommentOk(t, postId, comment, jwtAuth(token))
+		comment["id"] = commentId
+
+		publishedComments = append(publishedComments, comment)
+	}
+
+	sort.Slice(publishedComments, func(i, j int) bool {
+		return publishedComments[i]["id"].(int) < publishedComments[j]["id"].(int)
+	})
+
+	var receivedComments []map[string]any
+
+	pageToken := ""
+	for {
+		getCommentsResponse := getCommentsOk(t, postId, map[string]any{"page_token": pageToken}, jwtAuth(token))
+
+		commentsResponse := getCommentsResponse["comments"].([]any)
+		for _, commentAny := range commentsResponse {
+			comment := commentAny.(map[string]any)
+			receivedComments = append(receivedComments, comment)
+		}
+
+		pageToken = getCommentsResponse["next_page_token"].(string)
+		if pageToken == "" {
+			break
+		}
+	}
+
+	sort.Slice(receivedComments, func(i, j int) bool {
+		return int(receivedComments[i]["id"].(float64)) < int(receivedComments[j]["id"].(float64))
+	})
+
+	require.Equal(t, len(publishedComments), len(receivedComments))
+	for i := range len(publishedComments) {
+		assert.Equal(t, publishedComments[i]["id"].(int), int(receivedComments[i]["id"].(float64)))
+		assert.Equal(t, publishedComments[i]["content"].(string), receivedComments[i]["content"].(string))
+	}
 }

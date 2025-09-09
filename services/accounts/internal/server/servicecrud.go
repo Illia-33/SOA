@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	pb "soa-socialnetwork/services/accounts/proto"
@@ -20,19 +21,46 @@ func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 		return nil, err
 	}
 
-	sql := `
-	WITH acc_id AS (
-		INSERT INTO accounts(login, password, email, phone_number)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id as account_id
-	)
-	INSERT INTO profiles(account_id, name, surname, profile_id)
-	SELECT account_id, name, surname, profile_id
-	FROM (VALUES ($5, $6, $7::uuid)) as t (name, surname, profile_id)
-	CROSS JOIN acc_id;
-	`
+	tx, err := s.dbPool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	_, err = s.dbPool.Exec(ctx, sql, req.Login, req.Password, req.Email, req.PhoneNumber, req.Name, req.Surname, profileUUID)
+	sql := `
+	INSERT INTO accounts (login, password, email, phone_number)
+	VALUES ($1, $2, $3, $4)
+	RETURNING id;
+	`
+	row := tx.QueryRow(ctx, sql, req.Login, req.Password, req.Email, req.PhoneNumber)
+	var accountId int
+	err = row.Scan(&accountId)
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, err
+	}
+
+	sql = `
+	INSERT INTO profiles(account_id, profile_id, name, surname)
+	VALUES ($1, $2::uuid, $3, $4);
+	`
+	_, err = tx.Exec(ctx, sql, accountId, profileUUID, req.Name, req.Surname)
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, err
+	}
+
+	sql = `
+	INSERT INTO outbox(event_type, payload)
+	VALUES ('registration', $1::jsonb);
+	`
+	registerEvent := fmt.Sprintf(`{"account_id":%d,"profile_id":"%s"}`, accountId, profileUUID.String())
+	_, err = tx.Exec(ctx, sql, registerEvent)
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
 	if err != nil {
 		return nil, err
 	}

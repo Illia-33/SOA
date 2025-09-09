@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"soa-socialnetwork/services/posts/internal/server"
+	"soa-socialnetwork/services/posts/internal/service"
 	"strconv"
 )
 
@@ -75,7 +76,7 @@ func MustEd25519PubKeyFromEnv(key string) ed25519.PublicKey {
 }
 
 func main() {
-	s, err := server.Create(server.PostsServiceConfig{
+	s, err := server.Create(service.PostsServiceConfig{
 		Port:         MustIntFromEnv("POSTS_SERVICE_PORT"),
 		DbHost:       MustStringFromEnv("DB_HOST"),
 		DbUser:       MustStringFromEnv("DB_USER"),

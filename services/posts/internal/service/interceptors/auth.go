@@ -4,7 +4,7 @@ import (
 	"context"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	"soa-socialnetwork/services/accounts/pkg/soatoken"
-	"soa-socialnetwork/services/posts/internal/server/dbclient/types"
+	"soa-socialnetwork/services/posts/internal/domain"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -34,7 +34,7 @@ func WithAuth(verifier *soajwt.Verifier) grpc.UnaryServerInterceptor {
 
 				return validationInfo{
 					valid:     true,
-					accountId: types.AccountId(token.AccountId),
+					accountId: domain.AccountId(token.AccountId),
 				}
 			}
 
@@ -47,7 +47,7 @@ func WithAuth(verifier *soajwt.Verifier) grpc.UnaryServerInterceptor {
 
 				return validationInfo{
 					valid:     true,
-					accountId: types.AccountId(token.AccountId),
+					accountId: domain.AccountId(token.AccountId),
 				}
 			}
 		}
@@ -101,7 +101,7 @@ type authToken struct {
 
 type validationInfo struct {
 	valid     bool
-	accountId types.AccountId
+	accountId domain.AccountId
 }
 
 func fetchTokenFromMetadata(md metadata.MD) authToken {

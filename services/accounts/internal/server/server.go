@@ -13,6 +13,7 @@ import (
 type Server struct {
 	listener   net.Listener
 	grpcServer *grpc.Server
+	service    *AccountsService
 }
 
 func Create(port int, cfg AccountsServiceConfig) (*Server, error) {
@@ -36,9 +37,11 @@ func Create(port int, cfg AccountsServiceConfig) (*Server, error) {
 	return &Server{
 		listener:   lis,
 		grpcServer: grpcServer,
+		service:    service,
 	}, nil
 }
 
 func (s *Server) Run() error {
+	s.service.Start()
 	return s.grpcServer.Serve(s.listener)
 }
