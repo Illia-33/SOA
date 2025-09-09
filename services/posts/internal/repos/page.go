@@ -7,21 +7,11 @@ import (
 )
 
 type PagesRepository interface {
-	Get(context.Context, PageEntityId) (dom.Page, error)
+	GetByAccountId(context.Context, dom.AccountId) (dom.Page, error)
+	GetByPageId(context.Context, dom.PageId) (dom.Page, error)
+	GetByPostId(context.Context, dom.PostId) (dom.Page, error)
 	Edit(context.Context, dom.PageId, EditedPageSettings) error
 }
-
-type PageEntityId interface {
-	isPageEntityId()
-}
-
-type AccountId dom.AccountId
-type PageId dom.PageId
-type PostId dom.PostId
-
-func (AccountId) isPageEntityId() {}
-func (PageId) isPageEntityId()    {}
-func (PostId) isPageEntityId()    {}
 
 type EditedPageSettings struct {
 	VisibleForUnauthorized opt.Option[bool]

@@ -76,7 +76,7 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
-	pageData, err := s.storage.Pages.Get(ctx, repos.AccountId(req.AccountId))
+	pageData, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.AccountId))
 
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 }
 
 func (s *PostsService) GetPageSettings(ctx context.Context, req *pb.GetPageSettingsRequest) (*pb.GetPageSettingsResponse, error) {
-	pageSettings, err := s.storage.Pages.Get(ctx, repos.AccountId(req.AccountId))
+	pageSettings, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.AccountId))
 
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	pageData, err := s.storage.Pages.Get(ctx, repos.AccountId(req.PageAccountId))
+	pageData, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.PageAccountId))
 
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	pageData, err := s.storage.Pages.Get(ctx, repos.PostId(req.PostId))
+	pageData, err := s.storage.Pages.GetByPostId(ctx, dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsRequest) (*pb.GetCommentsResponse, error) {
 	authorizedId := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
 	if authorizedId == nil {
-		pageData, err := s.storage.Pages.Get(ctx, repos.PostId(req.PostId))
+		pageData, err := s.storage.Pages.GetByPostId(ctx, dom.PostId(req.PostId))
 
 		if err != nil {
 			return nil, err
@@ -212,7 +212,7 @@ func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsReque
 }
 
 func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
-	pageData, err := s.storage.Pages.Get(ctx, repos.PostId(req.PostId))
+	pageData, err := s.storage.Pages.GetByPostId(ctx, dom.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 }
 
 func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*pb.GetPostsResponse, error) {
-	pageData, err := s.storage.Pages.Get(ctx, repos.AccountId(req.PageAccountId))
+	pageData, err := s.storage.Pages.GetByAccountId(ctx, dom.AccountId(req.PageAccountId))
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 	}
 
 	if post.AuthorAccountId != authorizedId {
-		page, err := s.storage.Pages.Get(ctx, repos.PageId(post.PageId))
+		page, err := s.storage.Pages.GetByPageId(ctx, dom.PageId(post.PageId))
 
 		if err != nil {
 			return nil, err
