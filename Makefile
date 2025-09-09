@@ -27,8 +27,7 @@ e2e-tests: builder-image
 	docker compose --env-file $(PWD)/test.env --file $(PWD)/deploy/docker-compose.yml up --build --detach
 	sleep 3s
 	go test -count=1 $(PWD)/tests/e2e || \
-	echo "test failed, check /temp/soa-e2e.log" || \
-	docker compose --env-file $(PWD)/test.env --file $(PWD)/deploy/docker-compose.yml logs > /temp/soa-e2e.log
+	(echo "test failed, check soa-e2e.log" && docker compose --env-file $(PWD)/test.env --file $(PWD)/deploy/docker-compose.yml logs > $(PWD)/soa-e2e.log)
 	docker compose --env-file $(PWD)/test.env --file $(PWD)/deploy/docker-compose.yml down
 	sudo rm -r /temp/test-accounts-postgres
 	sudo rm -r /temp/test-posts-postgres
