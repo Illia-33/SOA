@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package stats_proto;
+
+option go_package=".";
+
+import "google/protobuf/timestamp.proto";
+
+message Empty{};
+
+message DayDynamics {
+    google.protobuf.Timestamp date = 1;
+    int32 count = 2;
+};
+
+enum Metric {
+    METRIC_UNSPECIFIED = 0;
+    METRIC_VIEW_COUNT = 1;
+    METRIC_LIKE_COUNT = 2;
+    METRIC_COMMENT_COUNT = 3;
+}
+
+message PostStats {
+    int32 post_id = 1;
+    int32 view_count = 2;
+    int32 like_count = 3;
+    int32 comment_count = 4;
+}
+
+message UserStats {
+    int32 user_id = 1;
+    int32 view_count = 2;
+    int32 like_count = 3;
+    int32 comment_count = 4;
+}
+
+// GetPostMetric
+
+message GetPostMetricRequest {
+    int32 post_id = 1;
+    Metric metric = 2;
+}
+
+message GetPostMetricResponse {
+    int64 count = 1;
+}
+
+// GetPostMetricDynamics
+
+message GetPostMetricDynamicsRequest {
+    int32 post_id = 1;
+    Metric metric = 2;
+}
+
+message GetPostMetricDynamicsResponse {
+    repeated DayDynamics dynamics = 1;
+}
+
+// GetTop10Posts
+
+message GetTop10PostsRequest {
+    Metric metric = 1;
+};
+
+message GetTop10PostsResponse {
+    repeated PostStats posts = 1;
+};
+
+// GetTop10Users
+
+message GetTop10UsersRequest {
+    Metric metric = 1;
+};
+
+message GetTop10UsersResponse {
+    repeated UserStats users = 1;
+};
+
+service StatsService {
+    rpc GetPostMetric(GetPostMetricRequest) returns (GetPostMetricResponse);
+    rpc GetPostMetricDynamics(GetPostMetricDynamicsRequest) returns (GetPostMetricDynamicsResponse);
+    rpc GetTop10Posts(GetTop10PostsRequest) returns (GetTop10PostsResponse);
+    rpc GetTop10Users(GetTop10UsersRequest) returns (GetTop10UsersResponse);
+};

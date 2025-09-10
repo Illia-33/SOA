@@ -13,6 +13,7 @@ builder-image:
 autogen:
 	(cd $(PWD)/services/accounts; make proto)
 	(cd $(PWD)/services/posts; make proto)
+	(cd $(PWD)/services/stats; make proto)
 
 .PHONY: run
 run: builder-image

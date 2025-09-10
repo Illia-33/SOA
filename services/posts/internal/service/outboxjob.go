@@ -12,7 +12,7 @@ import (
 
 func newCheckOutboxCallback(db repos.Database, eventsPerCall int) backjob.JobCallback {
 	kafkaWriter := kafka.Writer{
-		Addr:                   kafka.TCP("statistics-kafka:9092"),
+		Addr:                   kafka.TCP("stats-kafka:9092"),
 		RequiredAcks:           kafka.RequireAll,
 		AllowAutoTopicCreation: true,
 	}
