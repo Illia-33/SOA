@@ -13,7 +13,7 @@ import (
 func checkOutboxJob(dbPool *pgxpool.Pool) backjob.JobCallback {
 	lastCreatedAt := time.Time{}
 	kafkaWriter := kafka.Writer{
-		Addr:                   kafka.TCP("statistics-kafka:9092"),
+		Addr:                   kafka.TCP("stats-kafka:9092"),
 		RequiredAcks:           kafka.RequireAll,
 		AllowAutoTopicCreation: true,
 	}
