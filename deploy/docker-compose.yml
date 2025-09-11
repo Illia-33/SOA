@@ -114,8 +114,22 @@ services:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8123/ping"]
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1;"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
+
+  stats:
+    build:
+      dockerfile: ${PWD}/services/stats/Dockerfile
+    container_name: stats-service
+    depends_on:
+      stats-clickhouse:
+        condition: service_healthy
+    environment:
+      STATS_SERVICE_PORT: ${STATS_SERVICE_PORT}
+      DB_HOST: "stats-clickhouse"
+      DB_PORT: 9000
+      DB_USER: ${STATS_CLICKHOUSE_USER}
+      DB_PASSWORD: ${STATS_CLICKHOUSE_PASSWORD}
