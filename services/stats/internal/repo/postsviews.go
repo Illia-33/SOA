@@ -16,5 +16,5 @@ type PostsViewsRepo interface {
 	GetCountForPost(models.PostId) (int64, error)
 	GetDynamicsForPost(models.PostId) (ViewDynamics, error)
 
-	Put([]models.PostViewEvent) error
+	Put(...models.PostViewEvent) error
 }

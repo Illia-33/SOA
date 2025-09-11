@@ -16,5 +16,5 @@ type PostsCommentsRepo interface {
 	GetCountForPost(models.PostId) (int64, error)
 	GetDynamicsForPost(models.PostId) (CommentDynamics, error)
 
-	Put([]models.PostCommentEvent) error
+	Put(...models.PostCommentEvent) error
 }

@@ -59,7 +59,7 @@ func (r *postsCommentsRepo) GetDynamicsForPost(id models.PostId) (repo.CommentDy
 	return dynamics, nil
 }
 
-func (r *postsCommentsRepo) Put(events []models.PostCommentEvent) error {
+func (r *postsCommentsRepo) Put(events ...models.PostCommentEvent) error {
 	sql := `
 	INSERT INTO posts_views(post_id, author_account_id, comment_id, post_time)
 	`

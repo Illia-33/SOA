@@ -59,7 +59,7 @@ func (r *postsViewsRepo) GetDynamicsForPost(id models.PostId) (repo.ViewDynamics
 	return dynamics, nil
 }
 
-func (r *postsViewsRepo) Put(events []models.PostViewEvent) error {
+func (r *postsViewsRepo) Put(events ...models.PostViewEvent) error {
 	sql := `
 	INSERT INTO posts_views(post_id, viewer_account_id, view_time)
 	`

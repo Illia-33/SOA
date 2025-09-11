@@ -16,5 +16,5 @@ type PostsLikesRepo interface {
 	GetCountForPost(models.PostId) (int64, error)
 	GetDynamicsForPost(models.PostId) (LikeDynamics, error)
 
-	Put([]models.PostLikeEvent) error
+	Put(...models.PostLikeEvent) error
 }

@@ -59,7 +59,7 @@ func (r *postsLikesRepo) GetDynamicsForPost(id models.PostId) (repo.LikeDynamics
 	return dynamics, nil
 }
 
-func (r *postsLikesRepo) Put(events []models.PostLikeEvent) error {
+func (r *postsLikesRepo) Put(events ...models.PostLikeEvent) error {
 	sql := `
 	INSERT INTO posts_likes(post_id, liker_account_id, like_time)
 	`
