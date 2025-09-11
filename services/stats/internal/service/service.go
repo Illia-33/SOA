@@ -47,32 +47,17 @@ func (s *StatsService) GetPostMetric(ctx context.Context, req *pb.GetPostMetricR
 		switch req.Metric {
 		case pb.Metric_METRIC_VIEW_COUNT:
 			{
-				count, err := s.Db.PostsViews(ctx).GetCountForPost(postId)
-				if err != nil {
-					return -1, err
-				}
-
-				return count, nil
+				return s.Db.PostsViews(ctx).GetCountForPost(postId)
 			}
 
 		case pb.Metric_METRIC_LIKE_COUNT:
 			{
-				count, err := s.Db.PostsLikes(ctx).GetCountForPost(postId)
-				if err != nil {
-					return -1, err
-				}
-
-				return count, nil
+				return s.Db.PostsLikes(ctx).GetCountForPost(postId)
 			}
 
 		case pb.Metric_METRIC_COMMENT_COUNT:
 			{
-				count, err := s.Db.PostsComments(ctx).GetCountForPost(postId)
-				if err != nil {
-					return -1, err
-				}
-
-				return count, nil
+				return s.Db.PostsComments(ctx).GetCountForPost(postId)
 			}
 		}
 
