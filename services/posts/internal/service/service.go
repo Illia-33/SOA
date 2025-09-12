@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	"soa-socialnetwork/services/common/backjob"
 	opt "soa-socialnetwork/services/common/option"
@@ -11,6 +11,7 @@ import (
 	"soa-socialnetwork/services/posts/internal/service/interceptors"
 	"soa-socialnetwork/services/posts/internal/storage/postgres"
 	pb "soa-socialnetwork/services/posts/proto"
+	statsModels "soa-socialnetwork/services/stats/pkg/models"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -194,9 +195,19 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 		return nil, err
 	}
 
+	payload, err := json.Marshal(statsModels.PostCommentEvent{
+		CommentId:       statsModels.CommentId(commentId),
+		PostId:          statsModels.PostId(req.PostId),
+		AuthorAccountId: statsModels.AccountId(authorId),
+		Timestamp:       time.Now(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	err = tx.Outbox().Put(dom.OutboxEvent{
 		Type:    "comment",
-		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d,"comment_id":%d}`, authorId, req.PostId, commentId)),
+		Payload: dom.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		return nil, err
@@ -420,9 +431,18 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 		return nil, err
 	}
 
+	payload, err := json.Marshal(statsModels.PostViewEvent{
+		PostId:          statsModels.PostId(req.PostId),
+		ViewerAccountId: statsModels.AccountId(authorizedId),
+		Timestamp:       time.Now(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	err = tx.Outbox().Put(dom.OutboxEvent{
 		Type:    "view",
-		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
+		Payload: dom.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		tx.Rollback()
@@ -456,9 +476,18 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 		return nil, err
 	}
 
+	payload, err := json.Marshal(statsModels.PostLikeEvent{
+		PostId:         statsModels.PostId(req.PostId),
+		LikerAccountId: statsModels.AccountId(authorizedId),
+		Timestamp:      time.Now(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	err = tx.Outbox().Put(dom.OutboxEvent{
 		Type:    "like",
-		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
+		Payload: dom.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		tx.Rollback()
