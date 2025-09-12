@@ -154,27 +154,55 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	conn, err := s.Db.OpenConnection(ctx)
+	commentsEnabledErr := func() error {
+		conn, err := s.Db.OpenConnection(ctx)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
+		if err != nil {
+			return err
+		}
+
+		if !pageData.CommentsEnabled {
+			return status.Error(codes.PermissionDenied, "comments prohibited")
+		}
+
+		return nil
+	}()
+
+	if commentsEnabledErr != nil {
+		return nil, commentsEnabledErr
+	}
+
+	tx, err := s.Db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer tx.Close()
 
-	pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
-	if err != nil {
-		return nil, err
-	}
-
-	if !pageData.CommentsEnabled {
-		return nil, status.Error(codes.PermissionDenied, "comments prohibited")
-	}
-
-	commentId, err := conn.Comments().New(dom.PostId(req.PostId), repos.NewCommentData{
+	commentId, err := tx.Comments().New(dom.PostId(req.PostId), repos.NewCommentData{
 		AuthorId:       authorId,
 		Content:        dom.Text(req.Content),
 		ReplyCommentId: opt.FromPointer((*dom.CommentId)(req.ReplyCommentId)),
 	})
 
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Outbox().Put(dom.OutboxEvent{
+		Type:    "comment",
+		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d,"comment_id":%d}`, authorId, req.PostId, commentId)),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
