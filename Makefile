@@ -30,6 +30,4 @@ e2e-tests: builder-image
 	go test -count=1 $(PWD)/tests/e2e || \
 	(echo "test failed, check soa-e2e.log" && docker compose --env-file $(PWD)/test.env --file $(PWD)/deploy/docker-compose.yml logs > $(PWD)/soa-e2e.log)
 	docker compose --env-file $(PWD)/test.env --file $(PWD)/deploy/docker-compose.yml down
-	sudo rm -r /temp/test-accounts-postgres
-	sudo rm -r /temp/test-posts-postgres
-	sudo rm -r /temp/test-stats-clickhouse
+	sudo rm -r /temp/soa-e2e-test
