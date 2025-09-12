@@ -8,6 +8,8 @@ services:
         condition: service_started
       posts:
         condition: service_started
+      stats:
+        condition: service_started
     environment:
       GATEWAY_SERVICE_PORT: ${GATEWAY_SERVICE_PORT}
       JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
@@ -43,7 +45,7 @@ services:
       accounts-postgres:
         condition: service_healthy
       stats-kafka:
-        condition: service_started
+        condition: service_healthy
     environment:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
       DB_HOST: "accounts-postgres"
@@ -86,18 +88,22 @@ services:
 
   stats-kafka:
     image: apache/kafka:4.1.0
-    logging:
-      driver: none
     container_name: stats-kafka
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://stats-kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   stats-clickhouse:
     image: clickhouse/clickhouse-server:25.6
@@ -105,7 +111,6 @@ services:
     environment:
       CLICKHOUSE_USER: ${STATS_CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${STATS_CLICKHOUSE_PASSWORD}
-      CLICKHOUSE_DB: stats_clickhouse
     volumes:
       - ${PWD}/services/stats/db/migrations:/docker-entrypoint-initdb.d
       - ${STATS_CLICKHOUSE_DATA}:/var/lib/clickhouse
@@ -133,3 +138,5 @@ services:
       DB_PORT: 9000
       DB_USER: ${STATS_CLICKHOUSE_USER}
       DB_PASSWORD: ${STATS_CLICKHOUSE_PASSWORD}
+      KAFKA_HOST: "stats-kafka"
+      KAFKA_PORT: 9092
