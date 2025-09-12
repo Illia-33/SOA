@@ -25,3 +25,12 @@ CREATE TABLE IF NOT EXISTS posts_comments(
 ENGINE = MergeTree
 ORDER BY (post_id, post_time)
 PARTITION BY toYYYYMM(post_time);
+
+CREATE TABLE IF NOT EXISTS registrations(
+    account_id Int32,
+    profile_id String,
+    register_time DateTime
+)
+ENGINE = MergeTree
+ORDER BY (account_id, register_time)
+PARTITION BY toYYYYMM(register_time);

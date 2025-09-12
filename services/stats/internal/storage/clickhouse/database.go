@@ -69,3 +69,10 @@ func (d *Database) PostsComments(ctx context.Context) repo.PostsCommentsRepo {
 		conn: d.connection,
 	}
 }
+
+func (d *Database) Registrations(ctx context.Context) repo.RegistrationsRepo {
+	return &registrationsRepo{
+		ctx:  ctx,
+		conn: d.connection,
+	}
+}

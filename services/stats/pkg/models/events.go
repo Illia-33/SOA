@@ -20,3 +20,9 @@ type PostCommentEvent struct {
 	AuthorAccountId AccountId `json:"author_account_id"`
 	Timestamp       time.Time `json:"timestamp"`
 }
+
+type RegistrationEvent struct {
+	AccountId AccountId `json:"account_Id"`
+	ProfileId string    `json:"profile_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
