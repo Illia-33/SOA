@@ -202,6 +202,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 		Timestamp:       time.Now(),
 	})
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
@@ -210,6 +211,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 		Payload: dom.OutboxEventPayload(payload),
 	})
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
@@ -437,6 +439,7 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 		Timestamp:       time.Now(),
 	})
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
@@ -482,6 +485,7 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 		Timestamp:      time.Now(),
 	})
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
