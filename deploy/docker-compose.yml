@@ -104,6 +104,19 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+  
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8088:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: stats-kafka:9092
+      KAFKA_CLUSTERS_0_READONLY: "false"
+    depends_on:
+      stats-kafka:
+        condition: service_healthy
 
   stats-clickhouse:
     image: clickhouse/clickhouse-server:25.6
