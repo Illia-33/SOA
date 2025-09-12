@@ -31,7 +31,7 @@ func (r *postsCommentsRepo) GetCountForPost(id models.PostId) (int64, error) {
 func (r *postsCommentsRepo) GetDynamicsForPost(id models.PostId) (repo.CommentDynamics, error) {
 	sql := `
 	SELECT day, count(*)
-	FROM posts_views
+	FROM posts_comments
 	WHERE post_id = ?
 	GROUP BY toYYYYMMDD(view_time) AS day;
 	`
@@ -61,7 +61,7 @@ func (r *postsCommentsRepo) GetDynamicsForPost(id models.PostId) (repo.CommentDy
 
 func (r *postsCommentsRepo) Put(events ...models.PostCommentEvent) error {
 	sql := `
-	INSERT INTO posts_views(post_id, author_account_id, comment_id, post_time)
+	INSERT INTO posts_comments(post_id, author_account_id, comment_id, post_time)
 	`
 
 	batch, err := r.conn.PrepareBatch(r.ctx, sql)
