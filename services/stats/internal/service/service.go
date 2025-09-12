@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"soa-socialnetwork/services/stats/internal/kafka"
 	"soa-socialnetwork/services/stats/internal/repo"
+	kafkajobs "soa-socialnetwork/services/stats/internal/service/jobs/kafka"
 	"soa-socialnetwork/services/stats/internal/storage/clickhouse"
 	"soa-socialnetwork/services/stats/pkg/models"
 	pb "soa-socialnetwork/services/stats/proto"
@@ -15,14 +17,15 @@ import (
 type StatsService struct {
 	pb.UnimplementedStatsServiceServer
 
-	Db repo.Database
+	Db             repo.Database
+	KafkaProcessor kafkajobs.Processor
 }
 
 func New(cfg Config) (StatsService, error) {
 	db, err := clickhouse.NewDB(clickhouse.Config{
 		Hostname:     cfg.DbHost,
 		Port:         cfg.DbPort,
-		Database:     "stats_clickhouse",
+		Database:     "default",
 		Username:     cfg.DbUser,
 		Password:     cfg.DbPassword,
 		MaxIdleConns: 10,
@@ -32,9 +35,22 @@ func New(cfg Config) (StatsService, error) {
 		return StatsService{}, err
 	}
 
+	kafkaProcessor, err := kafkajobs.NewProcessor(kafka.ConnectionConfig{
+		Host: cfg.KafkaHost,
+		Port: cfg.KafkaPort,
+	}, &db)
+	if err != nil {
+		return StatsService{}, nil
+	}
+
 	return StatsService{
-		Db: &db,
+		Db:             &db,
+		KafkaProcessor: kafkaProcessor,
 	}, nil
+}
+
+func (s *StatsService) Start() {
+	s.KafkaProcessor.Start(context.Background())
 }
 
 func (s *StatsService) GetPostMetric(ctx context.Context, req *pb.GetPostMetricRequest) (*pb.GetPostMetricResponse, error) {

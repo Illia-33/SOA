@@ -45,10 +45,8 @@ func (r *topicWorker[MsgType]) startConsume(ctx context.Context) {
 	go func() {
 		for {
 			msg, err := r.consumer.FetchMessage(ctx)
-
 			if err != nil {
 				if errors.Is(err, io.EOF) {
-					close(r.messages)
 					break
 				}
 
@@ -60,6 +58,7 @@ func (r *topicWorker[MsgType]) startConsume(ctx context.Context) {
 			r.messages <- msg
 		}
 
+		close(r.messages)
 		r.close()
 	}()
 }
@@ -70,6 +69,9 @@ func (r *topicWorker[MsgType]) startWork(ctx context.Context) {
 		batch := make(messageBatch[MsgType], 0, BATCH_CAPACITY)
 
 		processBatch := func() error {
+			if len(batch) == 0 {
+				return nil
+			}
 			err := r.processBatch(ctx, batch)
 			if err != nil {
 				return err

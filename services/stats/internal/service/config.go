@@ -5,4 +5,6 @@ type Config struct {
 	DbPort     int
 	DbUser     string
 	DbPassword string
+	KafkaHost  string
+	KafkaPort  int
 }

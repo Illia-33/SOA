@@ -32,6 +32,8 @@ func New(port int, cfg service.Config) (Server, error) {
 }
 
 func (s *Server) Run() error {
+	s.service.Start()
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
 	if err != nil {
 		return err

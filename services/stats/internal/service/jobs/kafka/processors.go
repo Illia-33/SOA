@@ -7,13 +7,13 @@ import (
 	"soa-socialnetwork/services/stats/pkg/models"
 )
 
-type processors struct {
+type Processor struct {
 	view    topicWorker[models.PostViewEvent]
 	like    topicWorker[models.PostLikeEvent]
 	comment topicWorker[models.PostCommentEvent]
 }
 
-func NewProcessors(connCfg kafka.ConnectionConfig, db repo.Database) (ps processors, err error) {
+func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processor, err error) {
 	defer func() {
 		if err != nil {
 			ps.Close()
@@ -35,7 +35,7 @@ func NewProcessors(connCfg kafka.ConnectionConfig, db repo.Database) (ps process
 		},
 	)
 	if err != nil {
-		return processors{}, err
+		return Processor{}, err
 	}
 
 	ps.like, err = newTopicProcessor(
@@ -53,7 +53,7 @@ func NewProcessors(connCfg kafka.ConnectionConfig, db repo.Database) (ps process
 		},
 	)
 	if err != nil {
-		return processors{}, err
+		return Processor{}, err
 	}
 
 	ps.comment, err = newTopicProcessor(
@@ -71,19 +71,19 @@ func NewProcessors(connCfg kafka.ConnectionConfig, db repo.Database) (ps process
 		},
 	)
 	if err != nil {
-		return processors{}, err
+		return Processor{}, err
 	}
 
 	return
 }
 
-func (r *processors) Start(ctx context.Context) {
+func (r *Processor) Start(ctx context.Context) {
 	r.view.start(ctx)
 	r.like.start(ctx)
 	r.comment.start(ctx)
 }
 
-func (r *processors) Close() {
+func (r *Processor) Close() {
 	r.view.close()
 	r.like.close()
 	r.comment.close()

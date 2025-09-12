@@ -34,8 +34,8 @@ type Message[MsgType any] struct {
 func NewConsumer[MsgType any](connCfg ConnectionConfig, readerCfg ConsumerConfig) (Consumer[MsgType], error) {
 	cfg := kafka.ReaderConfig{
 		Brokers: []string{fmt.Sprintf("%s:%d", connCfg.Host, connCfg.Port)},
-		Topic:   readerCfg.Topic,
 		GroupID: readerCfg.GroupId,
+		Topic:   readerCfg.Topic,
 	}
 
 	reader := kafka.NewReader(cfg)
