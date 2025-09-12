@@ -68,6 +68,7 @@ func (r *postsLikesRepo) Put(events ...models.PostLikeEvent) error {
 	if err != nil {
 		return err
 	}
+	defer batch.Close()
 
 	for _, event := range events {
 		err := batch.Append(event.PostId, event.LikerAccountId, event.Timestamp)

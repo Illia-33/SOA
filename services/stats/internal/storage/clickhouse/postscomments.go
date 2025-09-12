@@ -68,6 +68,7 @@ func (r *postsCommentsRepo) Put(events ...models.PostCommentEvent) error {
 	if err != nil {
 		return err
 	}
+	defer batch.Close()
 
 	for _, event := range events {
 		err := batch.Append(event.PostId, event.AuthorAccountId, event.CommentId, event.Timestamp)

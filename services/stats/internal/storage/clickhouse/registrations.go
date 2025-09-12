@@ -21,6 +21,7 @@ func (r *registrationsRepo) Put(events ...models.RegistrationEvent) error {
 	if err != nil {
 		return err
 	}
+	defer batch.Close()
 
 	for _, event := range events {
 		err := batch.Append(event.AccountId, event.ProfileId, event.Timestamp)
