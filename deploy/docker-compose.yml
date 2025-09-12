@@ -147,6 +147,8 @@ services:
     depends_on:
       stats-clickhouse:
         condition: service_healthy
+      stats-kafka:
+        condition: service_healthy
     environment:
       STATS_SERVICE_PORT: ${STATS_SERVICE_PORT}
       DB_HOST: "stats-clickhouse"
