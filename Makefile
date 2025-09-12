@@ -13,6 +13,7 @@ builder-image:
 autogen:
 	(cd $(PWD)/services/accounts; make proto)
 	(cd $(PWD)/services/posts; make proto)
+	(cd $(PWD)/services/stats; make proto)
 
 .PHONY: run
 run: builder-image
@@ -31,3 +32,4 @@ e2e-tests: builder-image
 	docker compose --env-file $(PWD)/test.env --file $(PWD)/deploy/docker-compose.yml down
 	sudo rm -r /temp/test-accounts-postgres
 	sudo rm -r /temp/test-posts-postgres
+	sudo rm -r /temp/test-stats-clickhouse
