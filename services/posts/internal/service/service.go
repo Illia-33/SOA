@@ -113,25 +113,38 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	conn, err := s.Db.OpenConnection(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if authorId != dom.AccountId(req.PageAccountId) {
-		if !pageData.AnyoneCanPost {
-			return nil, status.Error(codes.PermissionDenied, "page owner prohibited posting")
+	pageData, permissionErr := func() (dom.Page, error) {
+		conn, err := s.Db.OpenConnection(ctx)
+		if err != nil {
+			return dom.Page{}, err
 		}
+		defer conn.Close()
+
+		pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
+		if err != nil {
+			return dom.Page{}, err
+		}
+
+		if authorId != dom.AccountId(req.PageAccountId) {
+			if !pageData.AnyoneCanPost {
+				return dom.Page{}, status.Error(codes.PermissionDenied, "page owner prohibited posting")
+			}
+		}
+
+		return pageData, nil
+	}()
+
+	if permissionErr != nil {
+		return nil, permissionErr
 	}
 
-	postId, err := conn.Posts().New(pageData.Id, repos.NewPostData{
+	tx, err := s.Db.BeginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	postId, err := tx.Posts().New(pageData.Id, repos.NewPostData{
 		AuthorId: authorId,
 		Content: dom.PostContent{
 			Text:         dom.Text(req.Text),
@@ -139,6 +152,31 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 		},
 	})
 
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	payload, err := json.Marshal(statsModels.PostEvent{
+		PostId:    statsModels.PostId(postId),
+		AuthorId:  statsModels.AccountId(authorId),
+		Timestamp: time.Now(),
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Outbox().Put(dom.OutboxEvent{
+		Type:    "post",
+		Payload: payload,
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}

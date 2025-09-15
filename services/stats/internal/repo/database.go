@@ -7,4 +7,5 @@ type Database interface {
 	PostsLikes(context.Context) PostsLikesRepo
 	PostsComments(context.Context) PostsCommentsRepo
 	Registrations(context.Context) RegistrationsRepo
+	Posts(context.Context) PostsRepo
 }

@@ -34,3 +34,12 @@ CREATE TABLE IF NOT EXISTS registrations(
 ENGINE = MergeTree
 ORDER BY (account_id, register_time)
 PARTITION BY toYYYYMM(register_time);
+
+CREATE TABLE IF NOT EXISTS posts(
+    post_id Int32,
+    author_id Int32,
+    post_time DateTime
+)
+ENGINE = MergeTree
+ORDER BY (author_id, post_time)
+PARTITION BY toYYYYMM(post_time);

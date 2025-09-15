@@ -12,6 +12,7 @@ type Processor struct {
 	like         topicWorker[models.PostLikeEvent]
 	comment      topicWorker[models.PostCommentEvent]
 	registration topicWorker[models.RegistrationEvent]
+	posts        topicWorker[models.PostEvent]
 }
 
 func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processor, err error) {
@@ -93,6 +94,24 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		return Processor{}, err
 	}
 
+	ps.posts, err = newTopicProcessor(
+		connCfg,
+		kafka.ConsumerConfig{
+			Topic:   "post",
+			GroupId: "stats-service-post",
+		},
+		func(ctx context.Context, batch messageBatch[models.PostEvent]) error {
+			events := make([]models.PostEvent, len(batch))
+			for i := range batch {
+				events[i] = batch[i].Value
+			}
+			return db.Posts(ctx).Put(events...)
+		},
+	)
+	if err != nil {
+		return Processor{}, err
+	}
+
 	return
 }
 
@@ -101,6 +120,7 @@ func (r *Processor) Start(ctx context.Context) {
 	r.like.start(ctx)
 	r.comment.start(ctx)
 	r.registration.start(ctx)
+	r.posts.start(ctx)
 }
 
 func (r *Processor) Close() {
@@ -108,4 +128,5 @@ func (r *Processor) Close() {
 	r.like.close()
 	r.comment.close()
 	r.registration.close()
+	r.posts.close()
 }

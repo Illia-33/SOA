@@ -121,6 +121,7 @@ services:
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic like --replication-factor 1 --partitions 1
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic comment --replication-factor 1 --partitions 1
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic registration --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic post --replication-factor 1 --partitions 1
         echo "Created kafka topics:"
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --list
       '
