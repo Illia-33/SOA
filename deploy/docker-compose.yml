@@ -44,8 +44,8 @@ services:
     depends_on:
       accounts-postgres:
         condition: service_healthy
-      stats-kafka:
-        condition: service_healthy
+      init-stats-kafka:
+        condition: service_completed_successfully
     environment:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
       DB_HOST: "accounts-postgres"
@@ -100,6 +100,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_LOG_DIR: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
     volumes:
       - ${STATS_KAFKA_DATA}:/var/lib/kafka/data
     healthcheck:
@@ -107,7 +108,23 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-  
+
+  init-stats-kafka:
+    image: apache/kafka:4.1.0
+    depends_on:
+      stats-kafka:
+        condition: service_healthy
+    entrypoint: >
+      sh -c '
+        echo "Start creating kafka topics"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic view --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic like --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic comment --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic registration --replication-factor 1 --partitions 1
+        echo "Created kafka topics:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --list
+      '
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -148,8 +165,8 @@ services:
     depends_on:
       stats-clickhouse:
         condition: service_healthy
-      stats-kafka:
-        condition: service_healthy
+      init-stats-kafka:
+        condition: service_completed_successfully
     environment:
       STATS_SERVICE_PORT: ${STATS_SERVICE_PORT}
       DB_HOST: "stats-clickhouse"

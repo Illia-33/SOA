@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"log"
 	"soa-socialnetwork/services/common/backjob"
 	"soa-socialnetwork/services/posts/internal/repos"
 	"time"
@@ -12,9 +11,8 @@ import (
 
 func newCheckOutboxCallback(db repos.Database, eventsPerCall int) backjob.JobCallback {
 	kafkaWriter := kafka.Writer{
-		Addr:                   kafka.TCP("stats-kafka:9092"),
-		RequiredAcks:           kafka.RequireAll,
-		AllowAutoTopicCreation: true,
+		Addr:         kafka.TCP("stats-kafka:9092"),
+		RequiredAcks: kafka.RequireAll,
 	}
 
 	lastCreatedAt := time.Time{}
@@ -39,11 +37,6 @@ func newCheckOutboxCallback(db repos.Database, eventsPerCall int) backjob.JobCal
 		if len(events) == 0 {
 			tx.Rollback()
 			return nil
-		}
-
-		log.Println("got events")
-		for i, event := range events {
-			log.Printf("event #%d: %+v", i, event)
 		}
 
 		messages := make([]kafka.Message, len(events))

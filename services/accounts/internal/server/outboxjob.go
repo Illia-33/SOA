@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log"
 	"soa-socialnetwork/services/common/backjob"
 	"time"
 
@@ -13,9 +12,8 @@ import (
 func checkOutboxJob(dbPool *pgxpool.Pool) backjob.JobCallback {
 	lastCreatedAt := time.Time{}
 	kafkaWriter := kafka.Writer{
-		Addr:                   kafka.TCP("stats-kafka:9092"),
-		RequiredAcks:           kafka.RequireAll,
-		AllowAutoTopicCreation: true,
+		Addr:         kafka.TCP("stats-kafka:9092"),
+		RequiredAcks: kafka.RequireAll,
 	}
 	return func(ctx context.Context) error {
 		tx, err := dbPool.Begin(ctx)
@@ -70,7 +68,6 @@ func checkOutboxJob(dbPool *pgxpool.Pool) backjob.JobCallback {
 			}
 
 			currentLastCreatedAt = createdAt
-			log.Printf("got event of type '%s' (%v) in outbox, payload = '%s'", eventType, createdAt, jsonPayload)
 			messages = append(messages, kafka.Message{
 				Topic: eventType,
 				Value: []byte(jsonPayload),
