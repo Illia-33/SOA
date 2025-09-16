@@ -3,13 +3,13 @@ package repo
 import "soa-socialnetwork/services/stats/pkg/models"
 
 type UserAgg struct {
-	AccountId   models.AccountId
-	MetricValue int
+	AccountId   int32
+	MetricValue int64
 }
 
 type PostAgg struct {
-	PostId      models.PostId
-	MetricValue int
+	PostId      int32
+	MetricValue int64
 }
 
 type AggregationRepo interface {
