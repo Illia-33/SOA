@@ -43,6 +43,27 @@ func getMetricDynamicsOk(t *testing.T, postId int, metric string) []map[string]a
 	return dynamics
 }
 
+func tryGetTop10Posts(t *testing.T, metric string) *http.Response {
+	body := map[string]any{
+		"metric": metric,
+	}
+	return makeRequest(t, http.MethodGet, "/top10/posts", body, "")
+}
+
+func getTop10PostsOk(t *testing.T, metric string) []map[string]any {
+	resp := tryGetTop10Posts(t, metric)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	dynamicsAny := (responseBodyToMap(t, resp)["posts"]).([]any)
+
+	dynamics := make([]map[string]any, len(dynamicsAny))
+	for i := range dynamicsAny {
+		dynamics[i] = dynamicsAny[i].(map[string]any)
+	}
+
+	return dynamics
+}
+
 func TestGetViewCount(t *testing.T) {
 	id := registerUserOk(t, map[string]any{
 		"login":        "get_view_count",
@@ -254,4 +275,48 @@ func TestGetCommentCountDynamics(t *testing.T) {
 	dynamics := getMetricDynamicsOk(t, postId, "comment_count")
 	require.Equal(t, 1, len(dynamics))
 	require.Equal(t, COMMENT_COUNT, int(dynamics[0]["count"].(float64)))
+}
+
+func TestGetTop10PostsByViewCount(t *testing.T) {
+	id := registerUserOk(t, map[string]any{
+		"login":        "top_poster_views",
+		"password":     "testpasswd",
+		"email":        "top_poster_views@yahoo.com",
+		"phone_number": "+79250000028",
+		"name":         "Top",
+		"surname":      "PosterViews",
+	})
+	token := authenticateOk(t, map[string]any{
+		"login":    "top_poster_views",
+		"password": "testpasswd",
+	})
+
+	const TOP_POST_VIEW_COUNT = 60
+	var postIds []int
+	for i := range 10 {
+		post := map[string]any{
+			"text": fmt.Sprintf("top post #%d", i),
+		}
+		postId := createPostOk(t, id, post, jwtAuth(token))
+		postIds = append(postIds, postId)
+
+		for range TOP_POST_VIEW_COUNT - i {
+			newViewOk(t, postId, jwtAuth(token))
+		}
+
+		token = authenticateOk(t, map[string]any{
+			"login":    "top_poster_views",
+			"password": "testpasswd",
+		})
+	}
+
+	time.Sleep(10 * time.Second)
+
+	top10Posts := getTop10PostsOk(t, "view_count")
+
+	require.Equal(t, 10, len(top10Posts))
+	for i, id := range postIds {
+		require.Equal(t, id, int(top10Posts[i]["post_id"].(float64)))
+		require.Equal(t, TOP_POST_VIEW_COUNT-i, int(top10Posts[i]["value"].(float64)))
+	}
 }
