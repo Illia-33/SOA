@@ -83,3 +83,10 @@ func (d *Database) Posts(ctx context.Context) repo.PostsRepo {
 		conn: d.connection,
 	}
 }
+
+func (d *Database) Aggregation(ctx context.Context) repo.AggregationRepo {
+	return &aggregationRepo{
+		ctx:  ctx,
+		conn: d.connection,
+	}
+}

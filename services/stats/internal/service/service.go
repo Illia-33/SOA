@@ -160,3 +160,45 @@ func (s *StatsService) GetPostMetricDynamics(ctx context.Context, req *pb.GetPos
 		return nil, status.Error(codes.Internal, "unknown metric")
 	}
 }
+
+func (s *StatsService) GetTop10Posts(ctx context.Context, req *pb.GetTop10PostsRequest) (*pb.GetTop10PostsResponse, error) {
+	if req.Metric == pb.Metric_METRIC_UNSPECIFIED {
+		return nil, status.Error(codes.InvalidArgument, "metric is not specified")
+	}
+
+	metric := metricFromProto(req.Metric)
+	postAggs, err := s.Db.Aggregation(ctx).GetTop10PostsByMetric(metric)
+	if err != nil {
+		return nil, err
+	}
+
+	var postStats []*pb.PostStats
+	for i := range postAggs {
+		postStats = append(postStats, postStatsFromAgg(postAggs[i], metric))
+	}
+
+	return &pb.GetTop10PostsResponse{
+		Posts: postStats,
+	}, nil
+}
+
+func (s *StatsService) GetTop10Users(ctx context.Context, req *pb.GetTop10UsersRequest) (*pb.GetTop10UsersResponse, error) {
+	if req.Metric == pb.Metric_METRIC_UNSPECIFIED {
+		return nil, status.Error(codes.InvalidArgument, "metric is not specified")
+	}
+
+	metric := metricFromProto(req.Metric)
+	userAggs, err := s.Db.Aggregation(ctx).GetTop10UsersByMetric(metric)
+	if err != nil {
+		return nil, err
+	}
+
+	var userStats []*pb.UserStats
+	for i := range userAggs {
+		userStats = append(userStats, userStatsFromAgg(userAggs[i], metric))
+	}
+
+	return &pb.GetTop10UsersResponse{
+		Users: userStats[:],
+	}, nil
+}

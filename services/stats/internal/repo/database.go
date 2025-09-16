@@ -8,4 +8,5 @@ type Database interface {
 	PostsComments(context.Context) PostsCommentsRepo
 	Registrations(context.Context) RegistrationsRepo
 	Posts(context.Context) PostsRepo
+	Aggregation(context.Context) AggregationRepo
 }
