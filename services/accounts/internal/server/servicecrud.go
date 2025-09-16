@@ -216,3 +216,22 @@ func (s *AccountsService) ResolveProfileId(ctx context.Context, req *pb.ResolveP
 		AccountId: int32(accountId),
 	}, nil
 }
+
+func (s *AccountsService) ResolveAccountId(ctx context.Context, req *pb.ResolveAccountIdRequest) (*pb.ResolveAccountIdResponse, error) {
+	accountId := req.AccountId
+	sql := `
+	SELECT profile_id
+	FROM profiles
+	WHERE account_id = $1;
+	`
+
+	row := s.dbPool.QueryRow(ctx, sql, accountId)
+	var profileId string
+	if err := row.Scan(&profileId); err != nil {
+		return nil, status.Error(codes.NotFound, "user not found")
+	}
+
+	return &pb.ResolveAccountIdResponse{
+		ProfileId: profileId,
+	}, nil
+}
