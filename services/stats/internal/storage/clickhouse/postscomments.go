@@ -33,7 +33,7 @@ func (r *postsCommentsRepo) GetDynamicsForPost(id models.PostId) (repo.CommentDy
 	SELECT day, count(*)
 	FROM posts_comments
 	WHERE post_id = ?
-	GROUP BY toYYYYMMDD(view_time) AS day;
+	GROUP BY toYYYYMMDD(post_time) AS day;
 	`
 	rows, err := r.conn.Query(r.ctx, sql, id)
 	if err != nil {
@@ -44,10 +44,13 @@ func (r *postsCommentsRepo) GetDynamicsForPost(id models.PostId) (repo.CommentDy
 
 	for rows.Next() {
 		var dailyStat repo.DailyCommentsStat
-		err := rows.Scan(&dailyStat.Date, &dailyStat.Count)
+		var ymd uint32
+		err := rows.Scan(&ymd, &dailyStat.Count)
 		if err != nil {
 			return nil, err
 		}
+
+		dailyStat.Date = dateFromYYYYMMDD(ymd)
 
 		dynamics = append(dynamics, dailyStat)
 	}

@@ -7,7 +7,7 @@ import (
 
 type DailyViewsStat struct {
 	Date  time.Time
-	Count int64
+	Count uint64
 }
 
 type ViewDynamics []DailyViewsStat

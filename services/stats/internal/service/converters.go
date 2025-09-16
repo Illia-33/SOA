@@ -29,17 +29,17 @@ func postStatsFromAgg(value repo.PostAgg, metric models.Metric) *pb.PostStats {
 	switch metric {
 	case models.METRIC_VIEW_COUNT:
 		{
-			postStats.ViewCount = int32(value.MetricValue)
+			postStats.ViewCount = uint64(value.MetricValue)
 		}
 
 	case models.METRIC_LIKE_COUNT:
 		{
-			postStats.LikeCount = int32(value.MetricValue)
+			postStats.LikeCount = uint64(value.MetricValue)
 		}
 
 	case models.METRIC_COMMENT_COUNT:
 		{
-			postStats.CommentCount = int32(value.MetricValue)
+			postStats.CommentCount = uint64(value.MetricValue)
 		}
 
 	default:
@@ -57,17 +57,17 @@ func userStatsFromAgg(value repo.UserAgg, metric models.Metric) *pb.UserStats {
 	switch metric {
 	case models.METRIC_VIEW_COUNT:
 		{
-			postStats.ViewCount = int32(value.MetricValue)
+			postStats.ViewCount = uint64(value.MetricValue)
 		}
 
 	case models.METRIC_LIKE_COUNT:
 		{
-			postStats.LikeCount = int32(value.MetricValue)
+			postStats.LikeCount = uint64(value.MetricValue)
 		}
 
 	case models.METRIC_COMMENT_COUNT:
 		{
-			postStats.CommentCount = int32(value.MetricValue)
+			postStats.CommentCount = uint64(value.MetricValue)
 		}
 
 	default:

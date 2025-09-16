@@ -7,7 +7,7 @@ import (
 
 type DailyLikeStat struct {
 	Date  time.Time
-	Count int64
+	Count uint64
 }
 
 type LikeDynamics []DailyLikeStat

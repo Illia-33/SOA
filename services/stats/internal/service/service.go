@@ -107,7 +107,7 @@ func (s *StatsService) GetPostMetricDynamics(ctx context.Context, req *pb.GetPos
 			for i, dayStat := range dynamics {
 				pbDynamics[i] = &pb.DayDynamics{
 					Date:  timestamppb.New(dayStat.Date),
-					Count: int32(dayStat.Count),
+					Count: dayStat.Count,
 				}
 			}
 
@@ -127,7 +127,7 @@ func (s *StatsService) GetPostMetricDynamics(ctx context.Context, req *pb.GetPos
 			for i, dayStat := range dynamics {
 				pbDynamics[i] = &pb.DayDynamics{
 					Date:  timestamppb.New(dayStat.Date),
-					Count: int32(dayStat.Count),
+					Count: dayStat.Count,
 				}
 			}
 
@@ -147,7 +147,7 @@ func (s *StatsService) GetPostMetricDynamics(ctx context.Context, req *pb.GetPos
 			for i, dayStat := range dynamics {
 				pbDynamics[i] = &pb.DayDynamics{
 					Date:  timestamppb.New(dayStat.Date),
-					Count: int32(dayStat.Count),
+					Count: dayStat.Count,
 				}
 			}
 

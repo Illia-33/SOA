@@ -44,10 +44,13 @@ func (r *postsLikesRepo) GetDynamicsForPost(id models.PostId) (repo.LikeDynamics
 
 	for rows.Next() {
 		var dailyStat repo.DailyLikeStat
-		err := rows.Scan(&dailyStat.Date, &dailyStat.Count)
+		var ymd uint32
+		err := rows.Scan(&ymd, &dailyStat.Count)
 		if err != nil {
 			return nil, err
 		}
+
+		dailyStat.Date = dateFromYYYYMMDD(ymd)
 
 		dynamics = append(dynamics, dailyStat)
 	}

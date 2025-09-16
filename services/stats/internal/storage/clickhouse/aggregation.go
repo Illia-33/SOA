@@ -13,21 +13,6 @@ type aggregationRepo struct {
 	conn chDriver.Conn
 }
 
-func toClickhouseMetricName(metric models.Metric) string {
-	switch metric {
-	case models.METRIC_VIEW_COUNT:
-		return "view_count"
-
-	case models.METRIC_LIKE_COUNT:
-		return "like_count"
-
-	case models.METRIC_COMMENT_COUNT:
-		return "comment_count"
-	}
-
-	return ""
-}
-
 func (r *aggregationRepo) GetTop10UsersByMetric(metric models.Metric) ([]repo.UserAgg, error) {
 	sql := `
 	SELECT account_id, cnt
@@ -37,7 +22,7 @@ func (r *aggregationRepo) GetTop10UsersByMetric(metric models.Metric) ([]repo.Us
 	LIMIT 10;
 	`
 
-	rows, err := r.conn.Query(r.ctx, sql, toClickhouseMetricName(metric))
+	rows, err := r.conn.Query(r.ctx, sql, metricToChMetricName(metric))
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +54,7 @@ func (r *aggregationRepo) GetTop10PostsByMetric(metric models.Metric) ([]repo.Po
 	LIMIT 10;
 	`
 
-	rows, err := r.conn.Query(r.ctx, sql, toClickhouseMetricName(metric))
+	rows, err := r.conn.Query(r.ctx, sql, metricToChMetricName(metric))
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import (
 
 type DailyCommentsStat struct {
 	Date  time.Time
-	Count int64
+	Count uint64
 }
 
 type CommentDynamics []DailyCommentsStat
