@@ -493,6 +493,7 @@ func (s *GatewayService) GetPostMetric(qp *query.Params, req *api.GetPostMetricR
 	}
 
 	resp, err := stub.GetPostMetric(context.Background(), &statsPb.GetPostMetricRequest{
+		PostId: qp.PostId,
 		Metric: metricToProto(req.Metric),
 	})
 	if err != nil {
@@ -511,6 +512,7 @@ func (s *GatewayService) GetPostMetricDynamics(qp *query.Params, req *api.GetPos
 	}
 
 	resp, err := stub.GetPostMetricDynamics(context.Background(), &statsPb.GetPostMetricDynamicsRequest{
+		PostId: qp.PostId,
 		Metric: metricToProto(req.Metric),
 	})
 	if err != nil {

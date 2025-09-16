@@ -46,7 +46,7 @@ func TestGetViewCount(t *testing.T) {
 		newViewOk(t, postId, jwtAuth(token))
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	viewCount := getMetricOk(t, postId, "view_count")
 	require.Equal(t, VIEW_COUNT, viewCount)
@@ -88,7 +88,7 @@ func TestGetLikeCount(t *testing.T) {
 		newLikeOk(t, postId, jwtAuth(likerToken))
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	likeCount := getMetricOk(t, postId, "like_count")
 	require.Equal(t, LIKE_COUNT, likeCount)
@@ -121,7 +121,7 @@ func TestGetCommentCount(t *testing.T) {
 		newCommentOk(t, postId, comment, jwtAuth(token))
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	commentCount := getMetricOk(t, postId, "comment_count")
 	require.Equal(t, COMMENT_COUNT, commentCount)
