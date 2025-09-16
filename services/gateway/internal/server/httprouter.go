@@ -172,5 +172,19 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		))
 	}
 
+	{
+		restApi.GET("/top10/posts", createHandler(
+			func(qp *query.Params, r *api.GetTop10PostsRequest) (api.GetTop10PostsResponse, httperr.Err) {
+				return service.GetTop10Posts(qp, r)
+			},
+		))
+
+		restApi.GET("/top10/users", createHandler(
+			func(qp *query.Params, r *api.GetTop10UsersRequest) (api.GetTop10UsersResponse, httperr.Err) {
+				return service.GetTop10Users(qp, r)
+			},
+		))
+	}
+
 	return httpRouter{router}
 }

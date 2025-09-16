@@ -528,3 +528,64 @@ func (s *GatewayService) GetPostMetricDynamics(qp *query.Params, req *api.GetPos
 		Dynamics: dynamics,
 	}, httperr.Ok()
 }
+
+func (s *GatewayService) GetTop10Posts(qp *query.Params, req *api.GetTop10PostsRequest) (api.GetTop10PostsResponse, httperr.Err) {
+	stub, err := s.createStatsStub(qp)
+	if err != nil {
+		return api.GetTop10PostsResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := stub.GetTop10Posts(context.Background(), &statsPb.GetTop10PostsRequest{
+		Metric: metricToProto(req.Metric),
+	})
+	if err != nil {
+		return api.GetTop10PostsResponse{}, httperr.FromGrpcError(err)
+	}
+
+	posts := make([]api.PostStats, len(resp.Posts))
+	for i, postPb := range resp.Posts {
+		posts[i] = postStatsFromProto(postPb, req.Metric)
+	}
+
+	return api.GetTop10PostsResponse{
+		Posts: posts,
+	}, httperr.Ok()
+}
+
+func (s *GatewayService) GetTop10Users(qp *query.Params, req *api.GetTop10UsersRequest) (api.GetTop10UsersResponse, httperr.Err) {
+	ctx := context.Background()
+
+	statsStub, err := s.createStatsStub(qp)
+	if err != nil {
+		return api.GetTop10UsersResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := statsStub.GetTop10Users(ctx, &statsPb.GetTop10UsersRequest{
+		Metric: metricToProto(req.Metric),
+	})
+	if err != nil {
+		return api.GetTop10UsersResponse{}, httperr.FromGrpcError(err)
+	}
+
+	accountsStub, err := s.createAccountsStub(qp)
+	if err != nil {
+		return api.GetTop10UsersResponse{}, httperr.Ok()
+	}
+
+	users := make([]api.UserStats, len(resp.Users))
+	for i, userPb := range resp.Users {
+		resp, err := accountsStub.ResolveAccountId(ctx, &accountsPb.ResolveAccountIdRequest{
+			AccountId: userPb.UserId,
+		})
+		if err != nil {
+			return api.GetTop10UsersResponse{}, httperr.FromGrpcError(err)
+		}
+
+		users[i] = userStatsFromProto(userPb, req.Metric)
+		users[i].Id = resp.ProfileId
+	}
+
+	return api.GetTop10UsersResponse{
+		Users: users,
+	}, httperr.Ok()
+}

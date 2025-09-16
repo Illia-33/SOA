@@ -29,3 +29,37 @@ func dayStatsFromProto(dayStats *statsPb.DayDynamics) api.DayDynamics {
 		Count: int(dayStats.Count),
 	}
 }
+
+func postStatsFromProto(postStats *statsPb.PostStats, metric types.Metric) api.PostStats {
+	var result api.PostStats
+	result.Id = int(postStats.PostId)
+
+	switch metric {
+	case types.METRIC_VIEW_COUNT:
+		result.Value = int(postStats.ViewCount)
+
+	case types.METRIC_LIKE_COUNT:
+		result.Value = int(postStats.LikeCount)
+
+	case types.METRIC_COMMENT_COUNT:
+		result.Value = int(postStats.CommentCount)
+	}
+
+	return result
+}
+
+func userStatsFromProto(userStats *statsPb.UserStats, metric types.Metric) api.UserStats {
+	var result api.UserStats
+	switch metric {
+	case types.METRIC_VIEW_COUNT:
+		result.Value = int(userStats.ViewCount)
+
+	case types.METRIC_LIKE_COUNT:
+		result.Value = int(userStats.LikeCount)
+
+	case types.METRIC_COMMENT_COUNT:
+		result.Value = int(userStats.CommentCount)
+	}
+
+	return result
+}
