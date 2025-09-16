@@ -123,3 +123,24 @@ type GetCommentsResponse struct {
 	Comments      []Comment `json:"comments"`
 	NextPageToken string    `json:"next_page_token"`
 }
+
+type GetPostMetricRequest struct {
+	Metric types.Metric `json:"metric"`
+}
+
+type GetPostMetricResponse struct {
+	Count int `json:"count"`
+}
+
+type GetPostMetricDynamicsRequest struct {
+	Metric types.Metric `json:"metric"`
+}
+
+type DayDynamics struct {
+	Date  types.Date `json:"day"`
+	Count int        `json:"count"`
+}
+
+type GetPostMetricDynamicsResponse struct {
+	Dynamics []DayDynamics `json:"dynamics"`
+}

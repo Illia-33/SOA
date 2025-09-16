@@ -5,6 +5,7 @@ import (
 	"soa-socialnetwork/services/gateway/internal/server/query"
 	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
 	postsPb "soa-socialnetwork/services/posts/proto"
+	statsPb "soa-socialnetwork/services/stats/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -37,4 +38,15 @@ func (f defaultPostsStubFactory) New(target string, qp *query.Params) (postsPb.P
 		return nil, err
 	}
 	return postsPb.NewPostsServiceClient(client), nil
+}
+
+type defaultStatsStubFactory struct {
+}
+
+func (f defaultStatsStubFactory) New(target string, qp *query.Params) (statsPb.StatsServiceClient, error) {
+	client, err := defaultGrpcClient(target, qp)
+	if err != nil {
+		return nil, err
+	}
+	return statsPb.NewStatsServiceClient(client), nil
 }
