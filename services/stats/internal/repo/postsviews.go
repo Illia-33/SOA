@@ -13,7 +13,7 @@ type DailyViewsStat struct {
 type ViewDynamics []DailyViewsStat
 
 type PostsViewsRepo interface {
-	GetCountForPost(models.PostId) (int64, error)
+	GetCountForPost(models.PostId) (uint64, error)
 	GetDynamicsForPost(models.PostId) (ViewDynamics, error)
 
 	Put(...models.PostViewEvent) error

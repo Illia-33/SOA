@@ -13,7 +13,7 @@ type DailyCommentsStat struct {
 type CommentDynamics []DailyCommentsStat
 
 type PostsCommentsRepo interface {
-	GetCountForPost(models.PostId) (int64, error)
+	GetCountForPost(models.PostId) (uint64, error)
 	GetDynamicsForPost(models.PostId) (CommentDynamics, error)
 
 	Put(...models.PostCommentEvent) error

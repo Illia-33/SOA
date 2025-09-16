@@ -58,7 +58,7 @@ func (s *StatsService) GetPostMetric(ctx context.Context, req *pb.GetPostMetricR
 		return nil, status.Error(codes.InvalidArgument, "metric is not specified")
 	}
 
-	count, err := func() (int64, error) {
+	count, err := func() (uint64, error) {
 		postId := models.PostId(req.PostId)
 		switch req.Metric {
 		case pb.Metric_METRIC_VIEW_COUNT:
@@ -77,7 +77,7 @@ func (s *StatsService) GetPostMetric(ctx context.Context, req *pb.GetPostMetricR
 			}
 		}
 
-		return -1, status.Error(codes.Internal, "unknown metric")
+		return 0, status.Error(codes.Internal, "unknown metric")
 	}()
 
 	if err != nil {

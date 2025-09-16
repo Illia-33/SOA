@@ -13,16 +13,16 @@ type postsViewsRepo struct {
 	conn chDriver.Conn
 }
 
-func (r *postsViewsRepo) GetCountForPost(id models.PostId) (int64, error) {
+func (r *postsViewsRepo) GetCountForPost(id models.PostId) (uint64, error) {
 	sql := `
 	SELECT count(*)
 	FROM posts_views
 	WHERE post_id = ?;
 	`
 	row := r.conn.QueryRow(r.ctx, sql, id)
-	var count int64
+	var count uint64
 	if err := row.Scan(&count); err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	return count, nil

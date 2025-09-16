@@ -42,7 +42,7 @@ message GetPostMetricRequest {
 }
 
 message GetPostMetricResponse {
-    int64 count = 1;
+    uint64 count = 1;
 }
 
 // GetPostMetricDynamics

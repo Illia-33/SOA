@@ -13,7 +13,7 @@ type DailyLikeStat struct {
 type LikeDynamics []DailyLikeStat
 
 type PostsLikesRepo interface {
-	GetCountForPost(models.PostId) (int64, error)
+	GetCountForPost(models.PostId) (uint64, error)
 	GetDynamicsForPost(models.PostId) (LikeDynamics, error)
 
 	Put(...models.PostLikeEvent) error
