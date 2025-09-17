@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -54,14 +55,35 @@ func getTop10PostsOk(t *testing.T, metric string) []map[string]any {
 	resp := tryGetTop10Posts(t, metric)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	dynamicsAny := (responseBodyToMap(t, resp)["posts"]).([]any)
+	top10Any := (responseBodyToMap(t, resp)["posts"]).([]any)
 
-	dynamics := make([]map[string]any, len(dynamicsAny))
-	for i := range dynamicsAny {
-		dynamics[i] = dynamicsAny[i].(map[string]any)
+	top10 := make([]map[string]any, len(top10Any))
+	for i := range top10Any {
+		top10[i] = top10Any[i].(map[string]any)
 	}
 
-	return dynamics
+	return top10
+}
+
+func tryGetTop10Users(t *testing.T, metric string) *http.Response {
+	body := map[string]any{
+		"metric": metric,
+	}
+	return makeRequest(t, http.MethodGet, "/top10/users", body, "")
+}
+
+func getTop10UsersOk(t *testing.T, metric string) []map[string]any {
+	resp := tryGetTop10Users(t, metric)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	top10Any := (responseBodyToMap(t, resp)["users"]).([]any)
+
+	top10 := make([]map[string]any, len(top10Any))
+	for i := range top10Any {
+		top10[i] = top10Any[i].(map[string]any)
+	}
+
+	return top10
 }
 
 func TestGetViewCount(t *testing.T) {
@@ -310,7 +332,7 @@ func TestGetTop10PostsByViewCount(t *testing.T) {
 		})
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	top10Posts := getTop10PostsOk(t, "view_count")
 
@@ -318,5 +340,74 @@ func TestGetTop10PostsByViewCount(t *testing.T) {
 	for i, id := range postIds {
 		require.Equal(t, id, int(top10Posts[i]["post_id"].(float64)))
 		require.Equal(t, TOP_POST_VIEW_COUNT-i, int(top10Posts[i]["value"].(float64)))
+	}
+}
+
+func TestGetTop10UsersByViewCount(t *testing.T) {
+	const TOP_USER_VIEW_COUNT = 73
+	profileIds := make([]string, 10)
+	postIds := make([]int, 10)
+	for i := range profileIds {
+		profileIds[i] = registerUserOk(t, map[string]any{
+			"login":        fmt.Sprintf("top_user_views_%d", i),
+			"password":     "testpasswd",
+			"email":        fmt.Sprintf("top_user_views_%d@yahoo.com", i),
+			"phone_number": fmt.Sprintf("+7928000000%d", i),
+			"name":         "Top",
+			"surname":      fmt.Sprintf("UserViews%d", i),
+		})
+	}
+
+	var wg sync.WaitGroup
+
+	for i := range postIds {
+		wg.Add(1)
+		go func(userNum int) {
+			token := authenticateOk(t, map[string]any{
+				"login":    fmt.Sprintf("top_user_views_%d", userNum),
+				"password": "testpasswd",
+			})
+			post := map[string]any{
+				"text": fmt.Sprintf("post by top user %s: #%d", profileIds[userNum], userNum),
+			}
+			postIds[userNum] = createPostOk(t, profileIds[userNum], post, jwtAuth(token))
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+
+	for i := range profileIds {
+		wg.Add(1)
+		go func(userNum int) {
+			token := authenticateOk(t, map[string]any{
+				"login":    fmt.Sprintf("top_user_views_%d", userNum),
+				"password": "testpasswd",
+			})
+			for i := range postIds {
+				if i == userNum {
+					for range 10 - i {
+						newViewOk(t, postIds[userNum], jwtAuth(token))
+					}
+				} else {
+					for range 7 {
+						newViewOk(t, postIds[i], jwtAuth(token))
+					}
+				}
+			}
+
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+
+	time.Sleep(60 * time.Second)
+
+	top10Users := getTop10UsersOk(t, "view_count")
+	require.Equal(t, 10, len(top10Users))
+	for i, user := range top10Users {
+		require.Equal(t, user["user_id"].(string), profileIds[i])
+		require.Equal(t, int(user["value"].(float64)), TOP_USER_VIEW_COUNT-i)
 	}
 }
