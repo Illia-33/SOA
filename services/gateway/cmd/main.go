@@ -86,12 +86,29 @@ func extractConfig() (server.GatewayServiceConfig, error) {
 		return server.GatewayServiceConfig{}, fmt.Errorf("bad POSTS_SERVICE_PORT PORT: %s", postsServicePortStr)
 	}
 
+	statsServiceHost, err := extractEnv("STATS_SERVICE_HOST")
+	if err != nil {
+		return server.GatewayServiceConfig{}, err
+	}
+
+	statsServicePortStr, err := extractEnv("STATS_SERVICE_PORT")
+	if err != nil {
+		return server.GatewayServiceConfig{}, err
+	}
+
+	statsServicePort, err := strconv.Atoi(statsServicePortStr)
+	if err != nil {
+		return server.GatewayServiceConfig{}, fmt.Errorf("bad STATS_SERVICE_PORT PORT: %s", statsServicePortStr)
+	}
+
 	return server.GatewayServiceConfig{
 		JwtPublicKey:        jwtPubKey,
 		AccountsServiceHost: accountsServiceHost,
 		AccountsServicePort: accountsServicePort,
 		PostsServiceHost:    postsServiceHost,
 		PostsServicePort:    postsServicePort,
+		StatsServiceHost:    statsServiceHost,
+		StatsServicePort:    statsServicePort,
 	}, nil
 }
 

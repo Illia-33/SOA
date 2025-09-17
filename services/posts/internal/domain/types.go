@@ -11,7 +11,7 @@ type PostId int32
 type CommentId int32
 type Text string
 type OutboxEventType string
-type OutboxEventPayload string
+type OutboxEventPayload []byte
 
 type Page struct {
 	Id                     PageId

@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	"soa-socialnetwork/services/common/backjob"
 	opt "soa-socialnetwork/services/common/option"
@@ -11,6 +11,7 @@ import (
 	"soa-socialnetwork/services/posts/internal/service/interceptors"
 	"soa-socialnetwork/services/posts/internal/storage/postgres"
 	pb "soa-socialnetwork/services/posts/proto"
+	statsModels "soa-socialnetwork/services/stats/pkg/models"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -112,25 +113,38 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	conn, err := s.Db.OpenConnection(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if authorId != dom.AccountId(req.PageAccountId) {
-		if !pageData.AnyoneCanPost {
-			return nil, status.Error(codes.PermissionDenied, "page owner prohibited posting")
+	pageData, permissionErr := func() (dom.Page, error) {
+		conn, err := s.Db.OpenConnection(ctx)
+		if err != nil {
+			return dom.Page{}, err
 		}
+		defer conn.Close()
+
+		pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
+		if err != nil {
+			return dom.Page{}, err
+		}
+
+		if authorId != dom.AccountId(req.PageAccountId) {
+			if !pageData.AnyoneCanPost {
+				return dom.Page{}, status.Error(codes.PermissionDenied, "page owner prohibited posting")
+			}
+		}
+
+		return pageData, nil
+	}()
+
+	if permissionErr != nil {
+		return nil, permissionErr
 	}
 
-	postId, err := conn.Posts().New(pageData.Id, repos.NewPostData{
+	tx, err := s.Db.BeginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	postId, err := tx.Posts().New(pageData.Id, repos.NewPostData{
 		AuthorId: authorId,
 		Content: dom.PostContent{
 			Text:         dom.Text(req.Text),
@@ -138,6 +152,31 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 		},
 	})
 
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	payload, err := json.Marshal(statsModels.PostEvent{
+		PostId:    statsModels.PostId(postId),
+		AuthorId:  statsModels.AccountId(authorId),
+		Timestamp: time.Now(),
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Outbox().Put(dom.OutboxEvent{
+		Type:    "post",
+		Payload: payload,
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -154,27 +193,67 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	authorId := authorIdVal.(dom.AccountId)
 
-	conn, err := s.Db.OpenConnection(ctx)
+	commentsEnabledErr := func() error {
+		conn, err := s.Db.OpenConnection(ctx)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
+		if err != nil {
+			return err
+		}
+
+		if !pageData.CommentsEnabled {
+			return status.Error(codes.PermissionDenied, "comments prohibited")
+		}
+
+		return nil
+	}()
+
+	if commentsEnabledErr != nil {
+		return nil, commentsEnabledErr
+	}
+
+	tx, err := s.Db.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer tx.Close()
 
-	pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
-	if err != nil {
-		return nil, err
-	}
-
-	if !pageData.CommentsEnabled {
-		return nil, status.Error(codes.PermissionDenied, "comments prohibited")
-	}
-
-	commentId, err := conn.Comments().New(dom.PostId(req.PostId), repos.NewCommentData{
+	commentId, err := tx.Comments().New(dom.PostId(req.PostId), repos.NewCommentData{
 		AuthorId:       authorId,
 		Content:        dom.Text(req.Content),
 		ReplyCommentId: opt.FromPointer((*dom.CommentId)(req.ReplyCommentId)),
 	})
 
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	payload, err := json.Marshal(statsModels.PostCommentEvent{
+		CommentId:       statsModels.CommentId(commentId),
+		PostId:          statsModels.PostId(req.PostId),
+		AuthorAccountId: statsModels.AccountId(authorId),
+		Timestamp:       time.Now(),
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Outbox().Put(dom.OutboxEvent{
+		Type:    "comment",
+		Payload: dom.OutboxEventPayload(payload),
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -392,9 +471,19 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 		return nil, err
 	}
 
+	payload, err := json.Marshal(statsModels.PostViewEvent{
+		PostId:          statsModels.PostId(req.PostId),
+		ViewerAccountId: statsModels.AccountId(authorizedId),
+		Timestamp:       time.Now(),
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	err = tx.Outbox().Put(dom.OutboxEvent{
 		Type:    "view",
-		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
+		Payload: dom.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		tx.Rollback()
@@ -428,9 +517,19 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 		return nil, err
 	}
 
+	payload, err := json.Marshal(statsModels.PostLikeEvent{
+		PostId:         statsModels.PostId(req.PostId),
+		LikerAccountId: statsModels.AccountId(authorizedId),
+		Timestamp:      time.Now(),
+	})
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	err = tx.Outbox().Put(dom.OutboxEvent{
 		Type:    "like",
-		Payload: dom.OutboxEventPayload(fmt.Sprintf(`{"account_id":%d,"post_id":%d}`, authorizedId, req.PostId)),
+		Payload: dom.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		tx.Rollback()

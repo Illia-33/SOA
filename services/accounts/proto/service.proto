@@ -106,6 +106,14 @@ message ResolveProfileIdResponse {
     int32 account_id = 1;
 };
 
+message ResolveAccountIdRequest {
+    int32 account_id = 1;
+};
+
+message ResolveAccountIdResponse {
+    string profile_id = 1;
+};
+
 service AccountsService {
     rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
     rpc UnregisterUser (UnregisterUserRequest) returns (Empty);
@@ -115,4 +123,5 @@ service AccountsService {
     rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse);
     rpc ValidateApiToken(ApiToken) returns (ApiTokenValidity);
     rpc ResolveProfileId(ResolveProfileIdRequest) returns (ResolveProfileIdResponse);
+    rpc ResolveAccountId(ResolveAccountIdRequest) returns (ResolveAccountIdResponse);
 };

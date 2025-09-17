@@ -8,6 +8,8 @@ services:
         condition: service_started
       posts:
         condition: service_started
+      stats:
+        condition: service_started
     environment:
       GATEWAY_SERVICE_PORT: ${GATEWAY_SERVICE_PORT}
       JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
@@ -15,6 +17,8 @@ services:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
       POSTS_SERVICE_HOST: "posts-service"
       POSTS_SERVICE_PORT: ${POSTS_SERVICE_PORT}
+      STATS_SERVICE_HOST: "stats-service"
+      STATS_SERVICE_PORT: ${STATS_SERVICE_PORT}
     ports:
       - "${GATEWAY_SERVICE_PORT}:${GATEWAY_SERVICE_PORT}"
 
@@ -42,8 +46,8 @@ services:
     depends_on:
       accounts-postgres:
         condition: service_healthy
-      statistics-kafka:
-        condition: service_started
+      init-stats-kafka:
+        condition: service_completed_successfully
     environment:
       ACCOUNTS_SERVICE_PORT: ${ACCOUNTS_SERVICE_PORT}
       DB_HOST: "accounts-postgres"
@@ -84,15 +88,93 @@ services:
       DB_POOL_SIZE: 5
       JWT_ED25519_PUBLIC_KEY: ${JWT_ED25519_PUBLIC_KEY}
 
-  statistics-kafka:
+  stats-kafka:
     image: apache/kafka:4.1.0
-    container_name: statistics-kafka
+    container_name: stats-kafka
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://stats-kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIR: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: false
+    volumes:
+      - ${STATS_KAFKA_DATA}:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  init-stats-kafka:
+    image: apache/kafka:4.1.0
+    depends_on:
+      stats-kafka:
+        condition: service_healthy
+    entrypoint: >
+      sh -c '
+        echo "Start creating kafka topics"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic view --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic like --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic comment --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic registration --replication-factor 1 --partitions 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --create --if-not-exists --topic post --replication-factor 1 --partitions 1
+        echo "Created kafka topics:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server stats-kafka:9092 --list
+      '
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8088:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: stats-kafka:9092
+      KAFKA_CLUSTERS_0_READONLY: "false"
+    depends_on:
+      stats-kafka:
+        condition: service_healthy
+
+  stats-clickhouse:
+    image: clickhouse/clickhouse-server:25.6
+    container_name: stats-clickhouse
+    environment:
+      CLICKHOUSE_USER: ${STATS_CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${STATS_CLICKHOUSE_PASSWORD}
+    volumes:
+      - ${PWD}/services/stats/db/migrations:/docker-entrypoint-initdb.d
+      - ${STATS_CLICKHOUSE_DATA}:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1;"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  stats:
+    build:
+      dockerfile: ${PWD}/services/stats/Dockerfile
+    container_name: stats-service
+    depends_on:
+      stats-clickhouse:
+        condition: service_healthy
+      init-stats-kafka:
+        condition: service_completed_successfully
+    environment:
+      STATS_SERVICE_PORT: ${STATS_SERVICE_PORT}
+      DB_HOST: "stats-clickhouse"
+      DB_PORT: 9000
+      DB_USER: ${STATS_CLICKHOUSE_USER}
+      DB_PASSWORD: ${STATS_CLICKHOUSE_PASSWORD}
+      KAFKA_HOST: "stats-kafka"
+      KAFKA_PORT: 9092

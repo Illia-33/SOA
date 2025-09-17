@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
+	"time"
 
 	pb "soa-socialnetwork/services/accounts/proto"
+	statsModels "soa-socialnetwork/services/stats/pkg/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -49,12 +51,21 @@ func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 		return nil, err
 	}
 
+	payload, err := json.Marshal(statsModels.RegistrationEvent{
+		AccountId: statsModels.AccountId(accountId),
+		ProfileId: profileUUID.String(),
+		Timestamp: time.Now(),
+	})
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, err
+	}
+
 	sql = `
 	INSERT INTO outbox(event_type, payload)
 	VALUES ('registration', $1::jsonb);
 	`
-	registerEvent := fmt.Sprintf(`{"account_id":%d,"profile_id":"%s"}`, accountId, profileUUID.String())
-	_, err = tx.Exec(ctx, sql, registerEvent)
+	_, err = tx.Exec(ctx, sql, payload)
 	if err != nil {
 		tx.Rollback(ctx)
 		return nil, err
@@ -203,5 +214,24 @@ func (s *AccountsService) ResolveProfileId(ctx context.Context, req *pb.ResolveP
 
 	return &pb.ResolveProfileIdResponse{
 		AccountId: int32(accountId),
+	}, nil
+}
+
+func (s *AccountsService) ResolveAccountId(ctx context.Context, req *pb.ResolveAccountIdRequest) (*pb.ResolveAccountIdResponse, error) {
+	accountId := req.AccountId
+	sql := `
+	SELECT profile_id
+	FROM profiles
+	WHERE account_id = $1;
+	`
+
+	row := s.dbPool.QueryRow(ctx, sql, accountId)
+	var profileId string
+	if err := row.Scan(&profileId); err != nil {
+		return nil, status.Error(codes.NotFound, "user not found")
+	}
+
+	return &pb.ResolveAccountIdResponse{
+		ProfileId: profileId,
 	}, nil
 }

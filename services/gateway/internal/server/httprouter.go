@@ -41,7 +41,7 @@ func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequ
 func newHttpRouter(service *GatewayService) httpRouter {
 	router := gin.Default()
 	restApi := router.Group("/api/v1")
-	withAuth := query.WithAuth(&service.jwtVerifier)
+	withAuth := query.WithAuth(&service.JwtVerifier)
 	withProfileId := query.WithProfileId()
 	withPostId := query.WithPostId()
 
@@ -146,12 +146,44 @@ func newHttpRouter(service *GatewayService) httpRouter {
 			},
 		))
 
-		restApi.POST("/post/:post_id/views", withPostId, withAuth, createHandler(func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
-			return api.Empty{}, service.NewView(qp)
-		}))
-		restApi.POST("/post/:post_id/likes", withPostId, withAuth, createHandler(func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
-			return api.Empty{}, service.NewLike(qp)
-		}))
+		restApi.POST("/post/:post_id/views", withPostId, withAuth, createHandler(
+			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.NewView(qp)
+			},
+		))
+		restApi.POST("/post/:post_id/likes", withPostId, withAuth, createHandler(
+			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
+				return api.Empty{}, service.NewLike(qp)
+			},
+		))
+	}
+
+	{
+		restApi.GET("/post/:post_id/metric", withPostId, createHandler(
+			func(qp *query.Params, r *api.GetPostMetricRequest) (api.GetPostMetricResponse, httperr.Err) {
+				return service.GetPostMetric(qp, r)
+			},
+		))
+
+		restApi.GET("/post/:post_id/metric_dynamics", withPostId, createHandler(
+			func(qp *query.Params, r *api.GetPostMetricDynamicsRequest) (api.GetPostMetricDynamicsResponse, httperr.Err) {
+				return service.GetPostMetricDynamics(qp, r)
+			},
+		))
+	}
+
+	{
+		restApi.GET("/top10/posts", createHandler(
+			func(qp *query.Params, r *api.GetTop10PostsRequest) (api.GetTop10PostsResponse, httperr.Err) {
+				return service.GetTop10Posts(qp, r)
+			},
+		))
+
+		restApi.GET("/top10/users", createHandler(
+			func(qp *query.Params, r *api.GetTop10UsersRequest) (api.GetTop10UsersResponse, httperr.Err) {
+				return service.GetTop10Users(qp, r)
+			},
+		))
 	}
 
 	return httpRouter{router}

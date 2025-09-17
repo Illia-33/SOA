@@ -39,6 +39,9 @@ func (j *JsonExtractor) bindJSON(r any, ctx *gin.Context) error {
 	case *api.EditPageSettingsRequest, *api.NewPostRequest, *api.GetPostsRequest, *api.EditPostRequest, *api.NewCommentRequest, *api.GetCommentsRequest:
 		return ctx.BindJSON(v)
 
+	case *api.GetPostMetricRequest, *api.GetPostMetricDynamicsRequest, *api.GetTop10PostsRequest, *api.GetTop10UsersRequest:
+		return ctx.BindJSON(v)
+
 	case *api.Empty:
 		return nil
 

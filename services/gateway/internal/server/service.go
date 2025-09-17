@@ -9,46 +9,62 @@ import (
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/query"
-	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
 	"soa-socialnetwork/services/gateway/pkg/types"
 	postsPb "soa-socialnetwork/services/posts/proto"
+	statsPb "soa-socialnetwork/services/stats/proto"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type GatewayService struct {
-	jwtVerifier         soajwt.Verifier
-	accountsGrpcTarget  string
-	postsGrpcTarget     string
-	accountsStubFactory soagrpc.AccountsStubFactory
-	postsStubFactory    soagrpc.PostsStubFactory
+	JwtVerifier          soajwt.Verifier
+	AccountsGrpcAccessor GrpcAccessor[accountsPb.AccountsServiceClient]
+	PostsGrpcAccessor    GrpcAccessor[postsPb.PostsServiceClient]
+	StatsGrpcAccessor    GrpcAccessor[statsPb.StatsServiceClient]
 }
 
 func newGatewayService(cfg GatewayServiceConfig) GatewayService {
-	if cfg.AccountsServiceStubFactory == nil {
-		cfg.AccountsServiceStubFactory = defaultAccountsStubFactory{}
-	}
-
-	if cfg.PostsServiceStubFactory == nil {
-		cfg.PostsServiceStubFactory = defaultPostsStubFactory{}
-	}
-
 	return GatewayService{
-		jwtVerifier:         soajwt.NewVerifier(cfg.JwtPublicKey),
-		accountsGrpcTarget:  fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
-		postsGrpcTarget:     fmt.Sprintf("%s:%d", cfg.PostsServiceHost, cfg.PostsServicePort),
-		accountsStubFactory: cfg.AccountsServiceStubFactory,
-		postsStubFactory:    cfg.PostsServiceStubFactory,
+		JwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
+		AccountsGrpcAccessor: GrpcAccessor[accountsPb.AccountsServiceClient]{
+			Target:  fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
+			Factory: defaultAccountsStubFactory{},
+		},
+		PostsGrpcAccessor: GrpcAccessor[postsPb.PostsServiceClient]{
+			Target:  fmt.Sprintf("%s:%d", cfg.PostsServiceHost, cfg.PostsServicePort),
+			Factory: defaultPostsStubFactory{},
+		},
+		StatsGrpcAccessor: GrpcAccessor[statsPb.StatsServiceClient]{
+			Target:  fmt.Sprintf("%s:%d", cfg.StatsServiceHost, cfg.StatsServicePort),
+			Factory: defaultStatsStubFactory{},
+		},
 	}
+}
+
+type grpcFactory[StubType any] interface {
+	New(target string, qp *query.Params) (StubType, error)
+}
+
+type GrpcAccessor[StubType any] struct {
+	Target  string
+	Factory grpcFactory[StubType]
+}
+
+func (a *GrpcAccessor[StubType]) createStub(qp *query.Params) (StubType, error) {
+	return a.Factory.New(a.Target, qp)
 }
 
 func (s *GatewayService) createAccountsStub(qp *query.Params) (accountsPb.AccountsServiceClient, error) {
-	return s.accountsStubFactory.New(s.accountsGrpcTarget, qp)
+	return s.AccountsGrpcAccessor.createStub(qp)
 }
 
 func (s *GatewayService) createPostsStub(qp *query.Params) (postsPb.PostsServiceClient, error) {
-	return s.postsStubFactory.New(s.postsGrpcTarget, qp)
+	return s.PostsGrpcAccessor.createStub(qp)
+}
+
+func (s *GatewayService) createStatsStub(qp *query.Params) (statsPb.StatsServiceClient, error) {
+	return s.StatsGrpcAccessor.createStub(qp)
 }
 
 func (s *GatewayService) RegisterProfile(qp *query.Params, req *api.RegisterProfileRequest) (api.RegisterProfileResponse, httperr.Err) {
@@ -468,4 +484,108 @@ func (s *GatewayService) NewLike(qp *query.Params) httperr.Err {
 	}
 
 	return httperr.Ok()
+}
+
+func (s *GatewayService) GetPostMetric(qp *query.Params, req *api.GetPostMetricRequest) (api.GetPostMetricResponse, httperr.Err) {
+	stub, err := s.createStatsStub(qp)
+	if err != nil {
+		return api.GetPostMetricResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := stub.GetPostMetric(context.Background(), &statsPb.GetPostMetricRequest{
+		PostId: qp.PostId,
+		Metric: metricToProto(req.Metric),
+	})
+	if err != nil {
+		return api.GetPostMetricResponse{}, httperr.FromGrpcError(err)
+	}
+
+	return api.GetPostMetricResponse{
+		Count: int(resp.Count),
+	}, httperr.Ok()
+}
+
+func (s *GatewayService) GetPostMetricDynamics(qp *query.Params, req *api.GetPostMetricDynamicsRequest) (api.GetPostMetricDynamicsResponse, httperr.Err) {
+	stub, err := s.createStatsStub(qp)
+	if err != nil {
+		return api.GetPostMetricDynamicsResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := stub.GetPostMetricDynamics(context.Background(), &statsPb.GetPostMetricDynamicsRequest{
+		PostId: qp.PostId,
+		Metric: metricToProto(req.Metric),
+	})
+	if err != nil {
+		return api.GetPostMetricDynamicsResponse{}, httperr.FromGrpcError(err)
+	}
+
+	dynamics := make([]api.DayDynamics, len(resp.Dynamics))
+	for i, dyn := range resp.Dynamics {
+		dynamics[i] = dayStatsFromProto(dyn)
+	}
+
+	return api.GetPostMetricDynamicsResponse{
+		Dynamics: dynamics,
+	}, httperr.Ok()
+}
+
+func (s *GatewayService) GetTop10Posts(qp *query.Params, req *api.GetTop10PostsRequest) (api.GetTop10PostsResponse, httperr.Err) {
+	stub, err := s.createStatsStub(qp)
+	if err != nil {
+		return api.GetTop10PostsResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := stub.GetTop10Posts(context.Background(), &statsPb.GetTop10PostsRequest{
+		Metric: metricToProto(req.Metric),
+	})
+	if err != nil {
+		return api.GetTop10PostsResponse{}, httperr.FromGrpcError(err)
+	}
+
+	posts := make([]api.PostStats, len(resp.Posts))
+	for i, postPb := range resp.Posts {
+		posts[i] = postStatsFromProto(postPb, req.Metric)
+	}
+
+	return api.GetTop10PostsResponse{
+		Posts: posts,
+	}, httperr.Ok()
+}
+
+func (s *GatewayService) GetTop10Users(qp *query.Params, req *api.GetTop10UsersRequest) (api.GetTop10UsersResponse, httperr.Err) {
+	ctx := context.Background()
+
+	statsStub, err := s.createStatsStub(qp)
+	if err != nil {
+		return api.GetTop10UsersResponse{}, httperr.New(http.StatusInternalServerError, err)
+	}
+
+	resp, err := statsStub.GetTop10Users(ctx, &statsPb.GetTop10UsersRequest{
+		Metric: metricToProto(req.Metric),
+	})
+	if err != nil {
+		return api.GetTop10UsersResponse{}, httperr.FromGrpcError(err)
+	}
+
+	accountsStub, err := s.createAccountsStub(qp)
+	if err != nil {
+		return api.GetTop10UsersResponse{}, httperr.Ok()
+	}
+
+	users := make([]api.UserStats, len(resp.Users))
+	for i, userPb := range resp.Users {
+		resp, err := accountsStub.ResolveAccountId(ctx, &accountsPb.ResolveAccountIdRequest{
+			AccountId: userPb.UserId,
+		})
+		if err != nil {
+			return api.GetTop10UsersResponse{}, httperr.FromGrpcError(err)
+		}
+
+		users[i] = userStatsFromProto(userPb, req.Metric)
+		users[i].Id = resp.ProfileId
+	}
+
+	return api.GetTop10UsersResponse{
+		Users: users,
+	}, httperr.Ok()
 }
