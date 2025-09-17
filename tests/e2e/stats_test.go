@@ -3,7 +3,6 @@ package e2e
 import (
 	"fmt"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -311,30 +310,22 @@ func TestGetTop10PostsByViewCount(t *testing.T) {
 
 	const TOP_POST_VIEW_COUNT = 60
 	postIds := make([]int, 10)
-	var wg sync.WaitGroup
-	for i := range 10 {
-		wg.Add(1)
-		go func(postNum int) {
-			token := authenticateOk(t, map[string]any{
-				"login":    "top_poster_views",
-				"password": "testpasswd",
-			})
+	for postNum := range 10 {
+		token := authenticateOk(t, map[string]any{
+			"login":    "top_poster_views",
+			"password": "testpasswd",
+		})
 
-			post := map[string]any{
-				"text": fmt.Sprintf("top post #%d", postNum),
-			}
-			postId := createPostOk(t, id, post, jwtAuth(token))
-			postIds[postNum] = postId
+		post := map[string]any{
+			"text": fmt.Sprintf("top post #%d", postNum),
+		}
+		postId := createPostOk(t, id, post, jwtAuth(token))
+		postIds[postNum] = postId
 
-			for range TOP_POST_VIEW_COUNT - postNum {
-				newViewOk(t, postId, jwtAuth(token))
-			}
-
-			wg.Done()
-		}(i)
+		for range TOP_POST_VIEW_COUNT - postNum {
+			newViewOk(t, postId, jwtAuth(token))
+		}
 	}
-
-	wg.Wait()
 
 	time.Sleep(60 * time.Second)
 
@@ -362,49 +353,34 @@ func TestGetTop10UsersByViewCount(t *testing.T) {
 		})
 	}
 
-	var wg sync.WaitGroup
-
-	for i := range postIds {
-		wg.Add(1)
-		go func(userNum int) {
-			token := authenticateOk(t, map[string]any{
-				"login":    fmt.Sprintf("top_user_views_%d", userNum),
-				"password": "testpasswd",
-			})
-			post := map[string]any{
-				"text": fmt.Sprintf("post by top user %s: #%d", profileIds[userNum], userNum),
-			}
-			postIds[userNum] = createPostOk(t, profileIds[userNum], post, jwtAuth(token))
-			wg.Done()
-		}(i)
+	for userNum := range postIds {
+		token := authenticateOk(t, map[string]any{
+			"login":    fmt.Sprintf("top_user_views_%d", userNum),
+			"password": "testpasswd",
+		})
+		post := map[string]any{
+			"text": fmt.Sprintf("post by top user %s: #%d", profileIds[userNum], userNum),
+		}
+		postIds[userNum] = createPostOk(t, profileIds[userNum], post, jwtAuth(token))
 	}
 
-	wg.Wait()
-
-	for i := range profileIds {
-		wg.Add(1)
-		go func(userNum int) {
-			token := authenticateOk(t, map[string]any{
-				"login":    fmt.Sprintf("top_user_views_%d", userNum),
-				"password": "testpasswd",
-			})
-			for i := range postIds {
-				if i == userNum {
-					for range 10 - i {
-						newViewOk(t, postIds[userNum], jwtAuth(token))
-					}
-				} else {
-					for range 7 {
-						newViewOk(t, postIds[i], jwtAuth(token))
-					}
+	for userNum := range profileIds {
+		token := authenticateOk(t, map[string]any{
+			"login":    fmt.Sprintf("top_user_views_%d", userNum),
+			"password": "testpasswd",
+		})
+		for i := range postIds {
+			if i == userNum {
+				for range 10 - i {
+					newViewOk(t, postIds[userNum], jwtAuth(token))
+				}
+			} else {
+				for range 7 {
+					newViewOk(t, postIds[i], jwtAuth(token))
 				}
 			}
-
-			wg.Done()
-		}(i)
+		}
 	}
-
-	wg.Wait()
 
 	time.Sleep(60 * time.Second)
 
