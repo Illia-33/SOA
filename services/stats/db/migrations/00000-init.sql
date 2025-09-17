@@ -49,10 +49,10 @@ PARTITION BY toYYYYMM(post_time);
 CREATE TABLE IF NOT EXISTS agg_post_metrics(
     post_id Int32,
     metric LowCardinality(String),
-    cnt Int64
+    cnt AggregateFunction(count, UInt64)
 )
-ENGINE = MergeTree
-ORDER BY (metric, cnt, post_id);
+ENGINE = AggregatingMergeTree
+ORDER BY (metric, post_id);
 
 CREATE MATERIALIZED VIEW mv_agg_post_metrics_view_count
 TO agg_post_metrics
@@ -60,7 +60,7 @@ AS
 SELECT
     post_id,
     'view_count' AS metric,
-    count() AS cnt
+    countState() AS cnt
 FROM posts_views
 GROUP BY post_id;
 
@@ -70,7 +70,7 @@ AS
 SELECT
     post_id,
     'like_count' AS metric,
-    count() AS cnt
+    countState() AS cnt
 FROM posts_likes
 GROUP BY post_id;
 
@@ -80,7 +80,7 @@ AS
 SELECT
     post_id,
     'comment_count' AS metric,
-    count() AS cnt
+    countState() AS cnt
 FROM posts_comments
 GROUP BY post_id;
 
@@ -89,10 +89,10 @@ GROUP BY post_id;
 CREATE TABLE IF NOT EXISTS agg_user_metrics(
     account_id Int32,
     metric LowCardinality(String),
-    cnt Int64
+    cnt AggregateFunction(count, UInt64)
 )
-ENGINE = MergeTree
-ORDER BY (metric, cnt, account_id);
+ENGINE = AggregatingMergeTree
+ORDER BY (metric, account_id);
 
 CREATE MATERIALIZED VIEW mv_agg_user_metrics_view_count
 TO agg_user_metrics
@@ -100,7 +100,7 @@ AS
 SELECT
     p.author_id AS account_id,
     'view_count' AS metric,
-    count(*) AS cnt
+    countState() AS cnt
 FROM posts_views pv
 INNER JOIN posts p ON pv.post_id = p.post_id 
 GROUP BY p.author_id;
@@ -111,7 +111,7 @@ AS
 SELECT
     p.author_id AS account_id,
     'like_count' AS metric,
-    count(*) AS cnt
+    countState() AS cnt
 FROM posts_likes pl
 INNER JOIN posts p ON pl.post_id = p.post_id 
 GROUP BY p.author_id;
@@ -122,7 +122,7 @@ AS
 SELECT
     p.author_id AS account_id,
     'comment_count' AS metric,
-    count(*) AS cnt
+    countState() AS cnt
 FROM posts_comments pc
 INNER JOIN posts p ON pc.post_id = p.post_id 
 GROUP BY p.author_id;

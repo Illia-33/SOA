@@ -15,9 +15,10 @@ type aggregationRepo struct {
 
 func (r *aggregationRepo) GetTop10UsersByMetric(metric models.Metric) ([]repo.UserAgg, error) {
 	sql := `
-	SELECT account_id, cnt
+	SELECT account_id, countMerge(cnt) AS cnt
 	FROM agg_user_metrics
 	WHERE metric = ?
+	GROUP BY account_id
 	ORDER BY cnt DESC
 	LIMIT 10;
 	`
@@ -45,11 +46,13 @@ func (r *aggregationRepo) GetTop10UsersByMetric(metric models.Metric) ([]repo.Us
 
 	return aggs, nil
 }
+
 func (r *aggregationRepo) GetTop10PostsByMetric(metric models.Metric) ([]repo.PostAgg, error) {
 	sql := `
-	SELECT post_id, cnt
+	SELECT post_id, countMerge(cnt) AS cnt
 	FROM agg_post_metrics
 	WHERE metric = ?
+	GROUP BY post_id
 	ORDER BY cnt DESC
 	LIMIT 10;
 	`

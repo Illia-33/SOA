@@ -4,12 +4,12 @@ import "soa-socialnetwork/services/stats/pkg/models"
 
 type UserAgg struct {
 	AccountId   int32
-	MetricValue int64
+	MetricValue uint64
 }
 
 type PostAgg struct {
 	PostId      int32
-	MetricValue int64
+	MetricValue uint64
 }
 
 type AggregationRepo interface {
