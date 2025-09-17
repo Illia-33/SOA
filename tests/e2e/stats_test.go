@@ -308,29 +308,33 @@ func TestGetTop10PostsByViewCount(t *testing.T) {
 		"name":         "Top",
 		"surname":      "PosterViews",
 	})
-	token := authenticateOk(t, map[string]any{
-		"login":    "top_poster_views",
-		"password": "testpasswd",
-	})
 
 	const TOP_POST_VIEW_COUNT = 60
-	var postIds []int
+	postIds := make([]int, 10)
+	var wg sync.WaitGroup
 	for i := range 10 {
-		post := map[string]any{
-			"text": fmt.Sprintf("top post #%d", i),
-		}
-		postId := createPostOk(t, id, post, jwtAuth(token))
-		postIds = append(postIds, postId)
+		wg.Add(1)
+		go func(postNum int) {
+			token := authenticateOk(t, map[string]any{
+				"login":    "top_poster_views",
+				"password": "testpasswd",
+			})
 
-		for range TOP_POST_VIEW_COUNT - i {
-			newViewOk(t, postId, jwtAuth(token))
-		}
+			post := map[string]any{
+				"text": fmt.Sprintf("top post #%d", postNum),
+			}
+			postId := createPostOk(t, id, post, jwtAuth(token))
+			postIds[postNum] = postId
 
-		token = authenticateOk(t, map[string]any{
-			"login":    "top_poster_views",
-			"password": "testpasswd",
-		})
+			for range TOP_POST_VIEW_COUNT - postNum {
+				newViewOk(t, postId, jwtAuth(token))
+			}
+
+			wg.Done()
+		}(i)
 	}
+
+	wg.Wait()
 
 	time.Sleep(60 * time.Second)
 
