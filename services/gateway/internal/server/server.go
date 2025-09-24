@@ -6,21 +6,19 @@ import (
 )
 
 type GatewayServer struct {
-	context service.GatewayService
+	service service.GatewayService
 	router  httpRouter
-	port    int
 }
 
-func (s *GatewayServer) Run() error {
-	return s.router.Run(fmt.Sprintf(":%d", s.port))
+func (s *GatewayServer) Run(port int) error {
+	return s.router.Run(fmt.Sprintf(":%d", port))
 }
 
-func Create(port int, cfg service.Config) (GatewayServer, error) {
+func Create(cfg service.Config) (GatewayServer, error) {
 	service := service.NewGatewayService(cfg)
 	router := newHttpRouter(&service)
 	return GatewayServer{
-		context: service,
+		service: service,
 		router:  router,
-		port:    port,
 	}, nil
 }
