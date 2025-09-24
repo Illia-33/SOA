@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"soa-socialnetwork/services/accounts/internal/server/soajwtissuer"
+	"soa-socialnetwork/services/accounts/internal/soajwtissuer"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	pb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/common/backjob"
@@ -14,26 +14,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type AccountsServiceConfig struct {
-	DbHost        string
-	DbUser        string
-	DbPassword    string
-	DbPoolSize    int
-	JwtPrivateKey ed25519.PrivateKey
-}
-
 type AccountsService struct {
 	pb.UnimplementedAccountsServiceServer
 
+	JwtVerifier soajwt.Verifier
+
 	dbPool    *pgxpool.Pool
 	outboxJob backjob.TickerJob
-
-	jwtIssuer   soajwtissuer.Issuer
-	jwtVerifier soajwt.Verifier
-	soaVerifier serviceSoaTokenVerifier
+	jwtIssuer soajwtissuer.Issuer
 }
 
-func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) {
+func NewAccountsService(cfg Config) (*AccountsService, error) {
 	connStr := fmt.Sprintf("user=%s password=%s host=%s port=5432 dbname=accounts-postgres sslmode=disable pool_max_conns=%d", cfg.DbUser, cfg.DbPassword, cfg.DbHost, cfg.DbPoolSize)
 	pool, err := pgxpool.New(context.Background(), connStr)
 	if err != nil {
@@ -46,9 +37,8 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 		dbPool:      pool,
 		outboxJob:   backjob.NewTickerJob(5*time.Second, checkOutboxJob(pool)),
 		jwtIssuer:   jwtIssuer,
-		jwtVerifier: soajwt.NewEd25519Verifier(pubkey),
+		JwtVerifier: soajwt.NewEd25519Verifier(pubkey),
 	}
-	service.soaVerifier = serviceSoaTokenVerifier{service: service}
 
 	return service, nil
 }

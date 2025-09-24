@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"soa-socialnetwork/services/accounts/internal/server/soajwtissuer"
+	"soa-socialnetwork/services/accounts/internal/soajwtissuer"
 	"time"
 
 	pb "soa-socialnetwork/services/accounts/proto"

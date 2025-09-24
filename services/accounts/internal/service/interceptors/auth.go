@@ -3,6 +3,7 @@ package interceptors
 import (
 	"context"
 	"errors"
+	"soa-socialnetwork/services/accounts/internal/service"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	"soa-socialnetwork/services/accounts/pkg/soatoken"
 	"strings"
@@ -75,7 +76,7 @@ func verifyJwtToken(tokenStr string, verifier soajwt.Verifier, requestProfileId 
 	return nil
 }
 
-func verifySoaToken(tokenStr string, verifier soatoken.Verifier, requestProfileId string, req soatoken.RightsRequirements) error {
+func verifySoaToken(tokenStr string, s *service.AccountsService, requestProfileId string, req soatoken.RightsRequirements) error {
 	token, err := soatoken.Parse(tokenStr)
 	if err != nil {
 		return err
@@ -85,7 +86,32 @@ func verifySoaToken(tokenStr string, verifier soatoken.Verifier, requestProfileI
 		return status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	return verifier.Verify(tokenStr, req)
+	response, err := s.ValidateApiToken(context.Background(), &pb.ApiToken{
+		Token: token.ProfileId.String(),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if response.GetInvalid() != nil {
+		return status.Error(codes.PermissionDenied, "token invalid")
+	}
+
+	valid := response.GetValid()
+	if valid == nil {
+		panic("shouldn't reach here")
+	}
+
+	if req.Read && !valid.ReadAccess {
+		return status.Error(codes.PermissionDenied, "need read access")
+	}
+
+	if req.Write && !valid.WriteAccess {
+		return status.Error(codes.PermissionDenied, "need write access")
+	}
+
+	return nil
 }
 
 func getSoaTokenRightsRequirements(methodName string) soatoken.RightsRequirements {
@@ -102,7 +128,7 @@ func getSoaTokenRightsRequirements(methodName string) soatoken.RightsRequirement
 	return soatoken.RightsRequirements{}
 }
 
-func Auth(jwtVerifier soajwt.Verifier, soaVerifier soatoken.Verifier) grpc.UnaryServerInterceptor {
+func Auth(s *service.AccountsService) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		if !needAuth(info.FullMethod) {
 			return handler(ctx, req)
@@ -121,7 +147,7 @@ func Auth(jwtVerifier soajwt.Verifier, soaVerifier soatoken.Verifier) grpc.Unary
 		profileId := fetchProfileIdFromRequest(req)
 
 		if parsedToken.kind == "Bearer" {
-			err := verifyJwtToken(parsedToken.value, jwtVerifier, profileId)
+			err := verifyJwtToken(parsedToken.value, s.JwtVerifier, profileId)
 			if err != nil {
 				return nil, err
 			}
@@ -129,7 +155,7 @@ func Auth(jwtVerifier soajwt.Verifier, soaVerifier soatoken.Verifier) grpc.Unary
 		}
 
 		if parsedToken.kind == "SoaToken" {
-			err := verifySoaToken(parsedToken.value, soaVerifier, profileId, getSoaTokenRightsRequirements(info.FullMethod))
+			err := verifySoaToken(parsedToken.value, s, profileId, getSoaTokenRightsRequirements(info.FullMethod))
 			if err != nil {
 				return nil, err
 			}
