@@ -39,15 +39,15 @@ func newGatewayService(cfg GatewayServiceConfig) GatewayService {
 		JwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
 		AccountsGrpcAccessor: GrpcAccessor[accountsPb.AccountsServiceClient]{
 			Target:  fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
-			Factory: defaultAccountsStubFactory{},
+			Factory: defaultAccountsStubCreator{},
 		},
 		PostsGrpcAccessor: GrpcAccessor[postsPb.PostsServiceClient]{
 			Target:  fmt.Sprintf("%s:%d", cfg.PostsServiceHost, cfg.PostsServicePort),
-			Factory: defaultPostsStubFactory{},
+			Factory: defaultPostsStubCreator{},
 		},
 		StatsGrpcAccessor: GrpcAccessor[statsPb.StatsServiceClient]{
 			Target:  fmt.Sprintf("%s:%d", cfg.StatsServiceHost, cfg.StatsServicePort),
-			Factory: defaultStatsStubFactory{},
+			Factory: defaultStatsStubCreator{},
 		},
 	}
 }

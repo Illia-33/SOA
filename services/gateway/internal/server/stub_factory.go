@@ -18,10 +18,10 @@ func defaultGrpcClient(target string, qp *query.Params) (*grpc.ClientConn, error
 	)
 }
 
-type defaultAccountsStubFactory struct {
+type defaultAccountsStubCreator struct {
 }
 
-func (f defaultAccountsStubFactory) New(target string, qp *query.Params) (accountsPb.AccountsServiceClient, error) {
+func (f defaultAccountsStubCreator) New(target string, qp *query.Params) (accountsPb.AccountsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
 	if err != nil {
 		return nil, err
@@ -29,10 +29,10 @@ func (f defaultAccountsStubFactory) New(target string, qp *query.Params) (accoun
 	return accountsPb.NewAccountsServiceClient(client), nil
 }
 
-type defaultPostsStubFactory struct {
+type defaultPostsStubCreator struct {
 }
 
-func (f defaultPostsStubFactory) New(target string, qp *query.Params) (postsPb.PostsServiceClient, error) {
+func (f defaultPostsStubCreator) New(target string, qp *query.Params) (postsPb.PostsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
 	if err != nil {
 		return nil, err
@@ -40,10 +40,10 @@ func (f defaultPostsStubFactory) New(target string, qp *query.Params) (postsPb.P
 	return postsPb.NewPostsServiceClient(client), nil
 }
 
-type defaultStatsStubFactory struct {
+type defaultStatsStubCreator struct {
 }
 
-func (f defaultStatsStubFactory) New(target string, qp *query.Params) (statsPb.StatsServiceClient, error) {
+func (f defaultStatsStubCreator) New(target string, qp *query.Params) (statsPb.StatsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
 	if err != nil {
 		return nil, err
