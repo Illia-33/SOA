@@ -62,7 +62,7 @@ func fetchProfileIdFromRequest(request any) string {
 	panic("shouldn't reach here")
 }
 
-func verifyJwtToken(tokenStr string, verifier *soajwt.Verifier, requestProfileId string) error {
+func verifyJwtToken(tokenStr string, verifier soajwt.Verifier, requestProfileId string) error {
 	token, err := verifier.Verify(tokenStr)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func getSoaTokenRightsRequirements(methodName string) soatoken.RightsRequirement
 	return soatoken.RightsRequirements{}
 }
 
-func Auth(jwtVerifier *soajwt.Verifier, soaVerifier soatoken.Verifier) grpc.UnaryServerInterceptor {
+func Auth(jwtVerifier soajwt.Verifier, soaVerifier soatoken.Verifier) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		if !needAuth(info.FullMethod) {
 			return handler(ctx, req)

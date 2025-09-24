@@ -17,7 +17,7 @@ type AccountIdCtxKey string
 
 const AUTHOR_ACCOUNT_ID_CTX_KEY AccountIdCtxKey = "account_id"
 
-func WithAuth(verifier *soajwt.Verifier) grpc.UnaryServerInterceptor {
+func WithAuth(verifier soajwt.Verifier) grpc.UnaryServerInterceptor {
 	validateToken := func(t authToken) validationInfo {
 		switch t.kind {
 		case auth_kind_unknown:
