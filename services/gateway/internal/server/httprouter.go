@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
-	"soa-socialnetwork/services/gateway/internal/server/jsonextractor"
 	"soa-socialnetwork/services/gateway/internal/server/query"
 
 	"github.com/gin-gonic/gin"
@@ -14,17 +13,16 @@ type httpRouter struct {
 	*gin.Engine
 }
 
+type empty struct{}
+
 type requestPerformer[TRequest any, TResponse any] func(*query.Params, *TRequest) (TResponse, httperr.Err)
 
 func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequest, TResponse]) func(*gin.Context) {
-	extractor := jsonextractor.New()
 	return func(ctx *gin.Context) {
 		params := query.ExtractParams(ctx)
 		var request TRequest
-		err := extractor.Extract(&request, ctx)
-
-		if !err.IsOk() {
-			ctx.AbortWithError(err.StatusCode, err.Err)
+		if err := ctx.BindJSON(&request); err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
 
@@ -56,20 +54,20 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		profileIdGroup := restApi.Group("/profile/:profile_id")
 		profileIdGroup.Use(withProfileId)
 		profileIdGroup.GET("", createHandler(
-			func(qp *query.Params, r *api.Empty) (api.GetProfileResponse, httperr.Err) {
+			func(qp *query.Params, r *empty) (api.GetProfileResponse, httperr.Err) {
 				return service.GetProfileInfo(qp)
 			},
 		))
 
 		profileIdGroup.PUT("", withAuth, createHandler(
-			func(qp *query.Params, r *api.EditProfileRequest) (api.Empty, httperr.Err) {
-				return api.Empty{}, service.EditProfileInfo(qp, r)
+			func(qp *query.Params, r *api.EditProfileRequest) (empty, httperr.Err) {
+				return empty{}, service.EditProfileInfo(qp, r)
 			},
 		))
 
 		profileIdGroup.DELETE("", withAuth, createHandler(
-			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
-				return api.Empty{}, service.DeleteProfile(qp)
+			func(qp *query.Params, r *empty) (empty, httperr.Err) {
+				return empty{}, service.DeleteProfile(qp)
 			},
 		))
 	}
@@ -89,13 +87,13 @@ func newHttpRouter(service *GatewayService) httpRouter {
 
 	{
 		restApi.GET("/profile/:profile_id/page/settings", withProfileId, createHandler(
-			func(qp *query.Params, r *api.Empty) (api.GetPageSettingsResponse, httperr.Err) {
+			func(qp *query.Params, r *empty) (api.GetPageSettingsResponse, httperr.Err) {
 				return service.GetPageSettings(qp)
 			},
 		))
 		restApi.PUT("/profile/:profile_id/page/settings", withProfileId, withAuth, createHandler(
-			func(qp *query.Params, r *api.EditPageSettingsRequest) (api.Empty, httperr.Err) {
-				return api.Empty{}, service.EditPageSettings(qp, r)
+			func(qp *query.Params, r *api.EditPageSettingsRequest) (empty, httperr.Err) {
+				return empty{}, service.EditPageSettings(qp, r)
 			},
 		))
 	}
@@ -118,18 +116,18 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		postGroup := restApi.Group("/post/:post_id")
 		postGroup.Use(withPostId)
 		postGroup.GET("", createHandler(
-			func(qp *query.Params, r *api.Empty) (api.Post, httperr.Err) {
+			func(qp *query.Params, r *empty) (api.Post, httperr.Err) {
 				return service.GetPost(qp)
 			},
 		))
 		postGroup.PUT("", withAuth, createHandler(
-			func(qp *query.Params, r *api.EditPostRequest) (api.Empty, httperr.Err) {
-				return api.Empty{}, service.EditPost(qp, r)
+			func(qp *query.Params, r *api.EditPostRequest) (empty, httperr.Err) {
+				return empty{}, service.EditPost(qp, r)
 			},
 		))
 		postGroup.DELETE("", withAuth, createHandler(
-			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
-				return api.Empty{}, service.DeletePost(qp)
+			func(qp *query.Params, r *empty) (empty, httperr.Err) {
+				return empty{}, service.DeletePost(qp)
 			},
 		))
 	}
@@ -147,13 +145,13 @@ func newHttpRouter(service *GatewayService) httpRouter {
 		))
 
 		restApi.POST("/post/:post_id/views", withPostId, withAuth, createHandler(
-			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
-				return api.Empty{}, service.NewView(qp)
+			func(qp *query.Params, r *empty) (empty, httperr.Err) {
+				return empty{}, service.NewView(qp)
 			},
 		))
 		restApi.POST("/post/:post_id/likes", withPostId, withAuth, createHandler(
-			func(qp *query.Params, r *api.Empty) (api.Empty, httperr.Err) {
-				return api.Empty{}, service.NewLike(qp)
+			func(qp *query.Params, r *empty) (empty, httperr.Err) {
+				return empty{}, service.NewLike(qp)
 			},
 		))
 	}
