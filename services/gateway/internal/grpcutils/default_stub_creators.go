@@ -1,9 +1,9 @@
-package service
+package grpcutils
 
 import (
-	accountsPb "soa-socialnetwork/services/accounts/proto"
-	"soa-socialnetwork/services/gateway/internal/grpcutils"
 	"soa-socialnetwork/services/gateway/internal/query"
+
+	accountsPb "soa-socialnetwork/services/accounts/proto"
 	postsPb "soa-socialnetwork/services/posts/proto"
 	statsPb "soa-socialnetwork/services/stats/proto"
 
@@ -14,14 +14,14 @@ import (
 func defaultGrpcClient(target string, qp *query.Params) (*grpc.ClientConn, error) {
 	return grpc.NewClient(target,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithPerRPCCredentials(grpcutils.NewCreds(qp)),
+		grpc.WithPerRPCCredentials(NewCreds(qp)),
 	)
 }
 
-type defaultAccountsStubCreator struct {
+type DefaultAccountsStubCreator struct {
 }
 
-func (f defaultAccountsStubCreator) New(target string, qp *query.Params) (accountsPb.AccountsServiceClient, error) {
+func (f DefaultAccountsStubCreator) New(target string, qp *query.Params) (accountsPb.AccountsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
 	if err != nil {
 		return nil, err
@@ -29,10 +29,10 @@ func (f defaultAccountsStubCreator) New(target string, qp *query.Params) (accoun
 	return accountsPb.NewAccountsServiceClient(client), nil
 }
 
-type defaultPostsStubCreator struct {
+type DefaultPostsStubCreator struct {
 }
 
-func (f defaultPostsStubCreator) New(target string, qp *query.Params) (postsPb.PostsServiceClient, error) {
+func (f DefaultPostsStubCreator) New(target string, qp *query.Params) (postsPb.PostsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
 	if err != nil {
 		return nil, err
@@ -40,10 +40,10 @@ func (f defaultPostsStubCreator) New(target string, qp *query.Params) (postsPb.P
 	return postsPb.NewPostsServiceClient(client), nil
 }
 
-type defaultStatsStubCreator struct {
+type DefaultStatsStubCreator struct {
 }
 
-func (f defaultStatsStubCreator) New(target string, qp *query.Params) (statsPb.StatsServiceClient, error) {
+func (f DefaultStatsStubCreator) New(target string, qp *query.Params) (statsPb.StatsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
 	if err != nil {
 		return nil, err
