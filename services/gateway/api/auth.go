@@ -39,38 +39,38 @@ type CreateApiTokenResponse struct {
 }
 
 func (r *AuthenticateRequest) UnmarshalJSON(b []byte) error {
-	var schema AuthenticateRequestSchema
-	if err := json.Unmarshal(b, &schema); err != nil {
+	var request AuthenticateRequestSchema
+	if err := json.Unmarshal(b, &request); err != nil {
 		return err
 	}
 
-	if !r.Login.HasValue && !r.PhoneNumber.HasValue && !r.Email.HasValue {
-		return errors.New("no userid")
+	if !request.Login.HasValue && !request.PhoneNumber.HasValue && !request.Email.HasValue {
+		return ErrorNoUserId{}
 	}
 
 	// checking that exactly one user id has been passed
-	if r.Login.HasValue && (r.Email.HasValue || r.PhoneNumber.HasValue) {
-		return errors.New("too much userid")
+	if request.Login.HasValue && (request.Email.HasValue || request.PhoneNumber.HasValue) {
+		return ErrorTooMuchUserId{}
 	}
-	if r.Email.HasValue && r.PhoneNumber.HasValue {
-		return errors.New("too much userid")
+	if request.Email.HasValue && request.PhoneNumber.HasValue {
+		return ErrorTooMuchUserId{}
 	}
 
-	r.AuthenticateRequestSchema = schema
+	r.AuthenticateRequestSchema = request
 
 	return nil
 }
 
 func (r *CreateApiTokenRequest) UnmarshalJSON(b []byte) error {
-	var schema CreateApiTokenRequestSchema
-	if err := json.Unmarshal(b, &schema); err != nil {
+	var request CreateApiTokenRequestSchema
+	if err := json.Unmarshal(b, &request); err != nil {
 		return err
 	}
 
-	if r.Ttl.Nanoseconds() <= 0 {
+	if request.Ttl.Nanoseconds() <= 0 {
 		return errors.New("ttl must be > 0")
 	}
 
-	r.CreateApiTokenRequestSchema = schema
+	r.CreateApiTokenRequestSchema = request
 	return nil
 }
