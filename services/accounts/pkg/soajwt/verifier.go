@@ -7,17 +7,21 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type Verifier struct {
+type Verifier interface {
+	Verify(jwt string) (Token, error)
+}
+
+type ed25519Verifier struct {
 	publicKey ed25519.PublicKey
 }
 
-func NewVerifier(pubkey ed25519.PublicKey) Verifier {
-	return Verifier{
+func NewEd25519Verifier(pubkey ed25519.PublicKey) Verifier {
+	return &ed25519Verifier{
 		publicKey: pubkey,
 	}
 }
 
-func (v *Verifier) Verify(tokenString string) (Token, error) {
+func (v *ed25519Verifier) Verify(tokenString string) (Token, error) {
 	var token Token
 	parsedToken, err := jwt.ParseWithClaims(tokenString, &token, func(t *jwt.Token) (any, error) {
 		return v.publicKey, nil

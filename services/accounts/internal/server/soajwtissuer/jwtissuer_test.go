@@ -20,7 +20,7 @@ func TestJwtIssueAndVerifySimple(t *testing.T) {
 	}
 
 	issuer := New(priv)
-	verifier := soajwt.NewVerifier(pub)
+	verifier := soajwt.NewEd25519Verifier(pub)
 
 	for i := 0; i < 10; i++ {
 		profileId := uuid.New().String()
@@ -46,7 +46,7 @@ func TestJwtIssueAndVerifyConcurrent(t *testing.T) {
 	}
 
 	issuer := New(priv)
-	verifier := soajwt.NewVerifier(pub)
+	verifier := soajwt.NewEd25519Verifier(pub)
 
 	wg := sync.WaitGroup{}
 
@@ -81,7 +81,7 @@ func TestJwtIssueAndVerifyTimeout(t *testing.T) {
 	}
 
 	issuer := New(priv)
-	verifier := soajwt.NewVerifier(pub)
+	verifier := soajwt.NewEd25519Verifier(pub)
 
 	profileId := uuid.New().String()
 	jwt, err := issuer.Issue(PersonalData{
