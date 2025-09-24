@@ -25,8 +25,11 @@ func TestAuthSimple(t *testing.T) {
 	req, err := unmarshal[AuthenticateRequest](rawJson)
 
 	require.NoError(t, err, "valid json unmarshalling failed")
-	assert.Equal(t, "some_login", req.Login)
-	assert.Equal(t, "some_passwd", req.Password)
+
+	assert.True(t, req.Login.HasValue)
+	assert.Equal(t, "some_login", string(req.Login.Value))
+
+	assert.Equal(t, "some_passwd", string(req.Password))
 }
 
 func TestAuthTooMuchUserId(t *testing.T) {
