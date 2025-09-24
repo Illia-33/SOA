@@ -18,8 +18,7 @@ func defaultGrpcClient(target string, qp *query.Params) (*grpc.ClientConn, error
 	)
 }
 
-type DefaultAccountsStubCreator struct {
-}
+type DefaultAccountsStubCreator struct{}
 
 func (f DefaultAccountsStubCreator) New(target string, qp *query.Params) (accountsPb.AccountsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
@@ -29,8 +28,7 @@ func (f DefaultAccountsStubCreator) New(target string, qp *query.Params) (accoun
 	return accountsPb.NewAccountsServiceClient(client), nil
 }
 
-type DefaultPostsStubCreator struct {
-}
+type DefaultPostsStubCreator struct{}
 
 func (f DefaultPostsStubCreator) New(target string, qp *query.Params) (postsPb.PostsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
@@ -40,8 +38,7 @@ func (f DefaultPostsStubCreator) New(target string, qp *query.Params) (postsPb.P
 	return postsPb.NewPostsServiceClient(client), nil
 }
 
-type DefaultStatsStubCreator struct {
-}
+type DefaultStatsStubCreator struct{}
 
 func (f DefaultStatsStubCreator) New(target string, qp *query.Params) (statsPb.StatsServiceClient, error) {
 	client, err := defaultGrpcClient(target, qp)
