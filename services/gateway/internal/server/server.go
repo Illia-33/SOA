@@ -2,24 +2,23 @@ package server
 
 import (
 	"fmt"
+	"soa-socialnetwork/services/gateway/internal/service"
 )
 
 type GatewayServer struct {
-	context GatewayService
+	service service.GatewayService
 	router  httpRouter
-	port    int
 }
 
-func (s *GatewayServer) Run() error {
-	return s.router.Run(fmt.Sprintf(":%d", s.port))
+func (s *GatewayServer) Run(port int) error {
+	return s.router.Run(fmt.Sprintf(":%d", port))
 }
 
-func Create(port int, cfg GatewayServiceConfig) (GatewayServer, error) {
-	service := newGatewayService(cfg)
+func Create(cfg service.Config) (GatewayServer, error) {
+	service := service.NewGatewayService(cfg)
 	router := newHttpRouter(&service)
 	return GatewayServer{
-		context: service,
+		service: service,
 		router:  router,
-		port:    port,
 	}, nil
 }

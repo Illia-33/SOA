@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"soa-socialnetwork/services/gateway/api"

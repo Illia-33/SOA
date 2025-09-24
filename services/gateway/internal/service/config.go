@@ -1,11 +1,11 @@
-package server
+package service
 
 import (
 	"crypto/ed25519"
 )
 
 // Set of parameters of gateway service
-type GatewayServiceConfig struct {
+type Config struct {
 	// ed25519 public key used for verifying jwt tokens
 	JwtPublicKey ed25519.PublicKey
 

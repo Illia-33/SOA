@@ -1,9 +1,9 @@
-package soagrpc
+package grpcutils
 
 import (
 	"context"
 	"fmt"
-	"soa-socialnetwork/services/gateway/internal/server/query"
+	"soa-socialnetwork/services/gateway/internal/query"
 )
 
 type tokenCredentials struct {
