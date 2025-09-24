@@ -1,7 +1,7 @@
-package soagrpc
+package grpcutils
 
 import (
-	"soa-socialnetwork/services/gateway/internal/server/query"
+	"soa-socialnetwork/services/gateway/internal/query"
 )
 
 type StubCreator[TStub any] interface {

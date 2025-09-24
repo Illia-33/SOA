@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	accountsPb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/gateway/api"
-	"soa-socialnetwork/services/gateway/internal/server/httperr"
-	"soa-socialnetwork/services/gateway/internal/server/query"
-	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
+	"soa-socialnetwork/services/gateway/internal/grpcutils"
+	"soa-socialnetwork/services/gateway/internal/httperr"
+	"soa-socialnetwork/services/gateway/internal/query"
 	"soa-socialnetwork/services/gateway/pkg/types"
 	postsPb "soa-socialnetwork/services/posts/proto"
 	statsPb "soa-socialnetwork/services/stats/proto"
@@ -27,14 +27,14 @@ type GatewayService struct {
 
 type GrpcAccessor[TStub any] struct {
 	Target  string
-	Factory soagrpc.StubCreator[TStub]
+	Factory grpcutils.StubCreator[TStub]
 }
 
 func (a *GrpcAccessor[TStub]) createStub(qp *query.Params) (TStub, error) {
 	return a.Factory.New(a.Target, qp)
 }
 
-func newGatewayService(cfg GatewayServiceConfig) GatewayService {
+func NewGatewayService(cfg Config) GatewayService {
 	return GatewayService{
 		JwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
 		AccountsGrpcAccessor: GrpcAccessor[accountsPb.AccountsServiceClient]{

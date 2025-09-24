@@ -3,8 +3,9 @@ package server
 import (
 	"net/http"
 	"soa-socialnetwork/services/gateway/api"
-	"soa-socialnetwork/services/gateway/internal/server/httperr"
-	"soa-socialnetwork/services/gateway/internal/server/query"
+	"soa-socialnetwork/services/gateway/internal/httperr"
+	"soa-socialnetwork/services/gateway/internal/query"
+	"soa-socialnetwork/services/gateway/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,7 +37,7 @@ func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequ
 	}
 }
 
-func newHttpRouter(service *GatewayService) httpRouter {
+func newHttpRouter(service *service.GatewayService) httpRouter {
 	router := gin.Default()
 	restApi := router.Group("/api/v1")
 	withAuth := query.WithAuth(&service.JwtVerifier)

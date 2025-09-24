@@ -1,9 +1,9 @@
-package server
+package service
 
 import (
 	accountsPb "soa-socialnetwork/services/accounts/proto"
-	"soa-socialnetwork/services/gateway/internal/server/query"
-	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
+	"soa-socialnetwork/services/gateway/internal/grpcutils"
+	"soa-socialnetwork/services/gateway/internal/query"
 	postsPb "soa-socialnetwork/services/posts/proto"
 	statsPb "soa-socialnetwork/services/stats/proto"
 
@@ -14,7 +14,7 @@ import (
 func defaultGrpcClient(target string, qp *query.Params) (*grpc.ClientConn, error) {
 	return grpc.NewClient(target,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithPerRPCCredentials(soagrpc.NewCreds(qp)),
+		grpc.WithPerRPCCredentials(grpcutils.NewCreds(qp)),
 	)
 }
 
