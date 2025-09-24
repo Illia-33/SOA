@@ -9,6 +9,7 @@ import (
 	"soa-socialnetwork/services/gateway/api"
 	"soa-socialnetwork/services/gateway/internal/server/httperr"
 	"soa-socialnetwork/services/gateway/internal/server/query"
+	"soa-socialnetwork/services/gateway/internal/server/soagrpc"
 	"soa-socialnetwork/services/gateway/pkg/types"
 	postsPb "soa-socialnetwork/services/posts/proto"
 	statsPb "soa-socialnetwork/services/stats/proto"
@@ -22,6 +23,15 @@ type GatewayService struct {
 	AccountsGrpcAccessor GrpcAccessor[accountsPb.AccountsServiceClient]
 	PostsGrpcAccessor    GrpcAccessor[postsPb.PostsServiceClient]
 	StatsGrpcAccessor    GrpcAccessor[statsPb.StatsServiceClient]
+}
+
+type GrpcAccessor[TStub any] struct {
+	Target  string
+	Factory soagrpc.StubCreator[TStub]
+}
+
+func (a *GrpcAccessor[TStub]) createStub(qp *query.Params) (TStub, error) {
+	return a.Factory.New(a.Target, qp)
 }
 
 func newGatewayService(cfg GatewayServiceConfig) GatewayService {
@@ -40,19 +50,6 @@ func newGatewayService(cfg GatewayServiceConfig) GatewayService {
 			Factory: defaultStatsStubFactory{},
 		},
 	}
-}
-
-type grpcFactory[StubType any] interface {
-	New(target string, qp *query.Params) (StubType, error)
-}
-
-type GrpcAccessor[StubType any] struct {
-	Target  string
-	Factory grpcFactory[StubType]
-}
-
-func (a *GrpcAccessor[StubType]) createStub(qp *query.Params) (StubType, error) {
-	return a.Factory.New(a.Target, qp)
 }
 
 func (s *GatewayService) createAccountsStub(qp *query.Params) (accountsPb.AccountsServiceClient, error) {
