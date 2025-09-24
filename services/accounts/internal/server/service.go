@@ -46,7 +46,7 @@ func createAccountsService(cfg AccountsServiceConfig) (*AccountsService, error) 
 		dbPool:      pool,
 		outboxJob:   backjob.NewTickerJob(5*time.Second, checkOutboxJob(pool)),
 		jwtIssuer:   jwtIssuer,
-		jwtVerifier: soajwt.NewVerifier(pubkey),
+		jwtVerifier: soajwt.NewEd25519Verifier(pubkey),
 	}
 	service.soaVerifier = serviceSoaTokenVerifier{service: service}
 

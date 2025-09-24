@@ -52,7 +52,7 @@ func TestVerifierValid(t *testing.T) {
 
 	jwt := buildValidJwt(token, priv)
 
-	verifier := NewVerifier(pub)
+	verifier := NewEd25519Verifier(pub)
 	verifiedToken, err := verifier.Verify(jwt)
 	require.NoError(t, err, `verification of valid token failed`)
 	assert.Equal(t, token.Issuer, verifiedToken.Issuer)
@@ -84,7 +84,7 @@ func TestVerifierTimeout(t *testing.T) {
 	}
 
 	jwt := buildValidJwt(token, priv)
-	verifier := NewVerifier(pub)
+	verifier := NewEd25519Verifier(pub)
 
 	time.Sleep(6 * time.Second)
 
@@ -117,7 +117,7 @@ func TestVerifierBrokenPayload(t *testing.T) {
 		return string(validBytes)
 	}()
 
-	verifier := NewVerifier(pub)
+	verifier := NewEd25519Verifier(pub)
 	_, err = verifier.Verify(jwt)
 	require.Error(t, err, `broken jwt token is verified`)
 }
@@ -147,7 +147,7 @@ func TestVerifierBrokenSign(t *testing.T) {
 		return string(validBytes)
 	}()
 
-	verifier := NewVerifier(pub)
+	verifier := NewEd25519Verifier(pub)
 	_, err = verifier.Verify(jwt)
 	require.Error(t, err, `broken jwt token is verified`)
 }

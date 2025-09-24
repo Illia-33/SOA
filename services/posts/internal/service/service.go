@@ -41,7 +41,7 @@ func New(cfg PostsServiceConfig) (PostsService, error) {
 
 	return PostsService{
 		Db:          &db,
-		JwtVerifier: soajwt.NewVerifier(cfg.JwtPublicKey),
+		JwtVerifier: soajwt.NewEd25519Verifier(cfg.JwtPublicKey),
 	}, nil
 }
 

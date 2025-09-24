@@ -41,7 +41,7 @@ func createHandler[TRequest any, TResponse any](doRequest requestPerformer[TRequ
 func newHttpRouter(service *GatewayService) httpRouter {
 	router := gin.Default()
 	restApi := router.Group("/api/v1")
-	withAuth := query.WithAuth(&service.JwtVerifier)
+	withAuth := query.WithAuth(service.JwtVerifier)
 	withProfileId := query.WithProfileId()
 	withPostId := query.WithPostId()
 
