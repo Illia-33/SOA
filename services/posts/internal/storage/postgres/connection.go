@@ -13,6 +13,7 @@ type connection struct {
 func (c *connection) Close() error {
 	if c.conn != nil {
 		c.conn.Release()
+		c.conn = nil
 	}
 	return nil
 }
