@@ -6,6 +6,7 @@ import (
 	"log"
 	"soa-socialnetwork/services/accounts/internal/models"
 	"soa-socialnetwork/services/accounts/internal/repo"
+	"soa-socialnetwork/services/accounts/internal/storage/postgres/errs"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -36,7 +37,7 @@ func (r profilesRepo) GetByAccountId(id models.AccountId) (models.ProfileData, e
 	err := row.Scan(&profileId, &name, &surname, &pgBirthday, &pgBio)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.ProfileData{}, ErrorProfileNotFound{}
+			return models.ProfileData{}, errs.ProfileNotFound{}
 		}
 
 		return models.ProfileData{}, err
@@ -81,7 +82,7 @@ func (r profilesRepo) GetByProfileId(id models.ProfileId) (models.ProfileData, e
 	err := row.Scan(&accountId, &name, &surname, &pgBirthday, &pgBio)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.ProfileData{}, ErrorProfileNotFound{}
+			return models.ProfileData{}, errs.ProfileNotFound{}
 		}
 
 		return models.ProfileData{}, err
@@ -120,7 +121,7 @@ func (r profilesRepo) ResolveProfileId(id models.ProfileId) (models.AccountId, e
 	err := row.Scan(&accountId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return -1, ErrorProfileNotFound{}
+			return -1, errs.ProfileNotFound{}
 		}
 		return -1, err
 	}
@@ -141,7 +142,7 @@ func (r profilesRepo) ResolveAccountId(id models.AccountId) (models.ProfileId, e
 	err := row.Scan(&profileId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", ErrorProfileNotFound{}
+			return "", errs.ProfileNotFound{}
 		}
 		return "", err
 	}
@@ -200,7 +201,7 @@ func (r profilesRepo) Edit(id models.ProfileId, data repo.EditedProfileData) err
 	}
 
 	if cnt == 0 {
-		return ErrorProfileNotFound{}
+		return errs.ProfileNotFound{}
 	}
 
 	if cnt != 1 {
@@ -229,7 +230,7 @@ func (r profilesRepo) Delete(id models.ProfileId) error {
 	}
 
 	if cnt == 0 {
-		return ErrorProfileNotFound{}
+		return errs.ProfileNotFound{}
 	}
 
 	if cnt != 1 {
@@ -237,10 +238,4 @@ func (r profilesRepo) Delete(id models.ProfileId) error {
 	}
 
 	return nil
-}
-
-type ErrorProfileNotFound struct{}
-
-func (ErrorProfileNotFound) Error() string {
-	return "profile not found"
 }

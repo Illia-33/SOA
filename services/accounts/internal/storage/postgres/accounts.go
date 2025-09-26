@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"soa-socialnetwork/services/accounts/internal/models"
+	"soa-socialnetwork/services/accounts/internal/storage/postgres/errs"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -22,7 +23,7 @@ func (r accountsRepo) CheckPasswordByLogin(login string, password string) (model
 	}
 
 	if params.password != password {
-		return models.AccountParams{}, ErrorPasswordsDoNotMatch{}
+		return models.AccountParams{}, errs.PasswordsDoNotMatch{}
 	}
 
 	return models.AccountParams{Id: models.AccountId(params.id)}, nil
@@ -35,7 +36,7 @@ func (r accountsRepo) CheckPasswordByEmail(email string, password string) (model
 	}
 
 	if params.password != password {
-		return models.AccountParams{}, ErrorPasswordsDoNotMatch{}
+		return models.AccountParams{}, errs.PasswordsDoNotMatch{}
 	}
 
 	return models.AccountParams{Id: models.AccountId(params.id)}, nil
@@ -48,7 +49,7 @@ func (r accountsRepo) CheckPasswordByPhoneNumber(phoneNumber string, password st
 	}
 
 	if params.password != password {
-		return models.AccountParams{}, ErrorPasswordsDoNotMatch{}
+		return models.AccountParams{}, errs.PasswordsDoNotMatch{}
 	}
 
 	return models.AccountParams{Id: models.AccountId(params.id)}, nil
@@ -90,7 +91,7 @@ func (r accountsRepo) Delete(id models.AccountId) error {
 	}
 
 	if cnt == 0 {
-		return ErrorAccountNotFound{}
+		return errs.AccountNotFound{}
 	}
 
 	if cnt != 1 {
@@ -118,27 +119,11 @@ func (r accountsRepo) fetchAccountParams(colName string, colValue string) (accou
 	err := row.Scan(&params.id, &params.password)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return accountParams{}, ErrorAccountNotFound{}
+			return accountParams{}, errs.AccountNotFound{}
 		}
 
 		return accountParams{}, err
 	}
 
 	return params, nil
-}
-
-type ErrorPasswordsDoNotMatch struct{}
-type ErrorAccountNotFound struct{}
-type ErrorUserIdNotFound struct{}
-
-func (ErrorPasswordsDoNotMatch) Error() string {
-	return "passwords do not match"
-}
-
-func (ErrorAccountNotFound) Error() string {
-	return "account not found"
-}
-
-func (ErrorUserIdNotFound) Error() string {
-	return "user id not found"
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"soa-socialnetwork/services/accounts/internal/models"
 	"soa-socialnetwork/services/accounts/internal/repo"
+	"soa-socialnetwork/services/accounts/internal/storage/postgres/errs"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -46,7 +47,7 @@ func (r apiTokensRepo) Get(token models.ApiToken) (models.ApiTokenData, error) {
 	err := row.Scan(&data.AccountId, &data.ReadAccess, &data.WriteAccess, &data.CreatedAt, &data.ValidUntil)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.ApiTokenData{}, ErrorTokenNotFound{}
+			return models.ApiTokenData{}, errs.TokenNotFound{}
 		}
 
 		return models.ApiTokenData{}, err
@@ -54,10 +55,4 @@ func (r apiTokensRepo) Get(token models.ApiToken) (models.ApiTokenData, error) {
 	data.Token = token
 
 	return data, nil
-}
-
-type ErrorTokenNotFound struct{}
-
-func (ErrorTokenNotFound) Error() string {
-	return "token not found"
 }

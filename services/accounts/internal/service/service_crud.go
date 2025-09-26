@@ -7,6 +7,8 @@ import (
 
 	"soa-socialnetwork/services/accounts/internal/models"
 	"soa-socialnetwork/services/accounts/internal/repo"
+	"soa-socialnetwork/services/accounts/internal/service/errs"
+	"soa-socialnetwork/services/accounts/internal/service/interceptors"
 	pb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/common/option"
 	statsModels "soa-socialnetwork/services/stats/pkg/models"
@@ -16,6 +18,11 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func getAuthInfo(ctx context.Context) interceptors.AuthInfo {
+	authInfo := ctx.Value(interceptors.AuthInfoKey).(interceptors.AuthInfo)
+	return authInfo
+}
 
 func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
 	tx, err := s.Db.BeginTransaction(ctx)
@@ -77,6 +84,11 @@ func (s *AccountsService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 }
 
 func (s *AccountsService) UnregisterUser(ctx context.Context, req *pb.UnregisterUserRequest) (*pb.Empty, error) {
+	authInfo := getAuthInfo(ctx)
+	if authInfo.ProfileId != req.ProfileId {
+		return nil, errs.AccessDenied{}
+	}
+
 	profileId := models.ProfileId(req.ProfileId)
 	accountId, err := func() (models.AccountId, error) {
 		conn, err := s.Db.OpenConnection(ctx)
@@ -141,6 +153,11 @@ func (s *AccountsService) GetProfile(ctx context.Context, req *pb.GetProfileRequ
 }
 
 func (s *AccountsService) EditProfile(ctx context.Context, req *pb.EditProfileRequest) (*pb.Empty, error) {
+	authInfo := getAuthInfo(ctx)
+	if authInfo.ProfileId != req.ProfileId {
+		return nil, errs.AccessDenied{}
+	}
+
 	if req.EditedProfileData == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty edit data")
 	}

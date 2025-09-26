@@ -2,37 +2,47 @@ package interceptors
 
 import (
 	"context"
-	"soa-socialnetwork/services/accounts/internal/storage/postgres"
+	serviceErrs "soa-socialnetwork/services/accounts/internal/service/errs"
+	"soa-socialnetwork/services/accounts/internal/service/interceptors/errs"
+	pgErrs "soa-socialnetwork/services/accounts/internal/storage/postgres/errs"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func convertToGrpcCode(err error) codes.Code {
+func convertToGrpcCode(err error) (code codes.Code, knownError bool) {
 	switch err.(type) {
-	case postgres.ErrorTokenNotFound, postgres.ErrorAccountNotFound, postgres.ErrorProfileNotFound, postgres.ErrorUserIdNotFound:
-		return codes.NotFound
+	case errs.InvalidToken, errs.NoAuth:
+		return codes.PermissionDenied, true
 
-	case postgres.ErrorPasswordsDoNotMatch:
-		return codes.PermissionDenied
+	case errs.UnknownAuthKind:
+		return codes.InvalidArgument, true
 
-	case ErrorAccessDenied, ErrorInvalidToken, ErrorNoAuth, ErrorNoReadAccess, ErrorNoWriteAccess:
-		return codes.PermissionDenied
+	case errs.NoMetadata:
+		return codes.Internal, true
 
-	case ErrorUnknownAuthKind:
-		return codes.InvalidArgument
+	case pgErrs.TokenNotFound, pgErrs.AccountNotFound, pgErrs.ProfileNotFound, pgErrs.UserIdNotFound:
+		return codes.NotFound, true
 
-	case ErrorNoMetadata:
-		return codes.Internal
+	case pgErrs.PasswordsDoNotMatch:
+		return codes.PermissionDenied, true
+
+	case serviceErrs.NoReadAccess, serviceErrs.NoWriteAccess, serviceErrs.TokenExpired, serviceErrs.AccessDenied:
+		return codes.PermissionDenied, true
 
 	default:
-		return codes.Internal
+		return codes.Internal, false
 	}
 }
 
 func convertToGrpcError(err error) error {
-	return status.Error(convertToGrpcCode(err), err.Error())
+	code, knownError := convertToGrpcCode(err)
+	if !knownError {
+		return err
+	}
+
+	return status.Error(code, err.Error())
 }
 
 func ConvertErrors() grpc.UnaryServerInterceptor {

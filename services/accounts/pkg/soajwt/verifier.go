@@ -15,8 +15,8 @@ type ed25519Verifier struct {
 	publicKey ed25519.PublicKey
 }
 
-func NewEd25519Verifier(pubkey ed25519.PublicKey) Verifier {
-	return &ed25519Verifier{
+func NewEd25519Verifier(pubkey ed25519.PublicKey) ed25519Verifier {
+	return ed25519Verifier{
 		publicKey: pubkey,
 	}
 }
