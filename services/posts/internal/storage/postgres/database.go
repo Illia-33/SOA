@@ -15,10 +15,6 @@ func NewDatabase(ctx context.Context, cfg Config) (database, error) {
 		return database{}, nil
 	}
 
-	if err != nil {
-		return database{}, err
-	}
-
 	return database{
 		connPool: pool,
 	}, nil
