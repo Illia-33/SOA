@@ -2,98 +2,64 @@ package service
 
 import (
 	"context"
+	"soa-socialnetwork/services/accounts/internal/repo"
 	"soa-socialnetwork/services/common/backjob"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 )
 
-func checkOutboxJob(dbPool *pgxpool.Pool) backjob.JobCallback {
-	lastCreatedAt := time.Time{}
+func checkOutboxJob(db repo.Database) backjob.JobCallback {
 	kafkaWriter := kafka.Writer{
 		Addr:         kafka.TCP("stats-kafka:9092"),
 		RequiredAcks: kafka.RequireAll,
 	}
+
+	lastCreatedAt := time.Time{}
+
 	return func(ctx context.Context) error {
-		tx, err := dbPool.Begin(ctx)
+		tx, err := db.BeginTransaction(ctx)
 		if err != nil {
 			return err
 		}
+		defer tx.Close()
 
-		sql := `
-		WITH cte AS (
-			SELECT id, event_type, payload, created_at
-			FROM outbox
-			WHERE 
-				created_at > $1 
-				AND is_processed = FALSE
-			ORDER BY created_at ASC
-			LIMIT 100
-			FOR UPDATE SKIP LOCKED
-		)
-		UPDATE outbox AS o
-		SET is_processed = TRUE
-		FROM cte
-		WHERE o.id = cte.id
-		RETURNING cte.event_type, cte.payload, cte.created_at;
-		`
+		events, err := tx.Outbox().Fetch(repo.OutboxFetchParams{
+			Limit:         100,
+			LastCreatedAt: lastCreatedAt,
+		})
 
-		rows, err := tx.Query(ctx, sql, lastCreatedAt)
 		if err != nil {
-			tx.Rollback(ctx)
+			tx.Rollback()
 			return err
 		}
 
-		currentLastCreatedAt := time.Time{}
-		var messages []kafka.Message
-		for {
-			if !rows.Next() {
-				if err := rows.Err(); err != nil {
-					return err
-				}
-				break
-			}
-
-			var (
-				eventType   string
-				jsonPayload string
-				createdAt   time.Time
-			)
-
-			err := rows.Scan(&eventType, &jsonPayload, &createdAt)
-			if err != nil {
-				tx.Rollback(ctx)
-				return err
-			}
-
-			currentLastCreatedAt = createdAt
-			messages = append(messages, kafka.Message{
-				Topic: eventType,
-				Value: []byte(jsonPayload),
-				Time:  createdAt,
-			})
-		}
-
-		if len(messages) == 0 {
-			tx.Rollback(ctx)
+		if len(events) == 0 {
+			tx.Rollback()
 			return nil
+		}
+
+		messages := make([]kafka.Message, len(events))
+		for i, event := range events {
+			messages[i] = kafka.Message{
+				Topic: event.Type,
+				Value: []byte(event.Payload),
+				Time:  event.CreatedAt,
+			}
 		}
 
 		err = kafkaWriter.WriteMessages(ctx, messages...)
 		if err != nil {
-			tx.Rollback(ctx)
+			tx.Rollback()
 			return err
 		}
 
-		err = tx.Commit(ctx)
+		err = tx.Commit()
 		if err != nil {
-			tx.Rollback(ctx)
 			return err
 		}
 
-		lastCreatedAt = currentLastCreatedAt
-
+		lastCreatedAt = events[len(events)-1].CreatedAt
 		return nil
 	}
 }

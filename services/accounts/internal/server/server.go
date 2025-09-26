@@ -23,7 +23,10 @@ func Create(cfg service.Config) (*Server, error) {
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(interceptors.Auth(service)),
+		grpc.ChainUnaryInterceptor(
+			interceptors.ConvertErrors(),
+			interceptors.Auth(service),
+		),
 	)
 	pb.RegisterAccountsServiceServer(grpcServer, service)
 

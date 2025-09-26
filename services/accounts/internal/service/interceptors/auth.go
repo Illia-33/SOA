@@ -2,7 +2,6 @@ package interceptors
 
 import (
 	"context"
-	"errors"
 	"soa-socialnetwork/services/accounts/internal/service"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	"soa-socialnetwork/services/accounts/pkg/soatoken"
@@ -11,9 +10,7 @@ import (
 	pb "soa-socialnetwork/services/accounts/proto"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 func needAuth(methodName string) bool {
@@ -26,19 +23,19 @@ type parsedToken struct {
 }
 
 func parseTokenFromMetadata(md metadata.MD) (parsedToken, error) {
-	auth := md["authorization"]
-	if len(auth) == 0 {
-		return parsedToken{}, errors.New("auth token is not found")
+	auth, ok := md["authorization"]
+	if !ok {
+		return parsedToken{}, ErrorNoAuth{}
 	}
 
 	split := strings.Split(auth[0], " ")
 	if len(split) != 2 {
-		return parsedToken{}, errors.New("bad token")
+		return parsedToken{}, ErrorInvalidToken{}
 	}
 
 	authKind, authToken := split[0], split[1]
 	if !(authKind == "Bearer" || authKind == "SoaToken") {
-		return parsedToken{}, errors.New("unknown auth kind")
+		return parsedToken{}, ErrorUnknownAuthKind{}
 	}
 
 	return parsedToken{
@@ -70,7 +67,7 @@ func verifyJwtToken(tokenStr string, verifier soajwt.Verifier, requestProfileId 
 	}
 
 	if token.Subject != requestProfileId {
-		return status.Error(codes.PermissionDenied, "access denied")
+		return ErrorAccessDenied{}
 	}
 
 	return nil
@@ -83,11 +80,11 @@ func verifySoaToken(tokenStr string, s *service.AccountsService, requestProfileI
 	}
 
 	if token.ProfileId.String() != requestProfileId {
-		return status.Error(codes.PermissionDenied, "access denied")
+		return ErrorAccessDenied{}
 	}
 
 	response, err := s.ValidateApiToken(context.Background(), &pb.ApiToken{
-		Token: token.ProfileId.String(),
+		Token: tokenStr,
 	})
 
 	if err != nil {
@@ -95,7 +92,7 @@ func verifySoaToken(tokenStr string, s *service.AccountsService, requestProfileI
 	}
 
 	if response.GetInvalid() != nil {
-		return status.Error(codes.PermissionDenied, "token invalid")
+		return ErrorInvalidToken{}
 	}
 
 	valid := response.GetValid()
@@ -104,11 +101,11 @@ func verifySoaToken(tokenStr string, s *service.AccountsService, requestProfileI
 	}
 
 	if req.Read && !valid.ReadAccess {
-		return status.Error(codes.PermissionDenied, "need read access")
+		return ErrorNoReadAccess{}
 	}
 
 	if req.Write && !valid.WriteAccess {
-		return status.Error(codes.PermissionDenied, "need write access")
+		return ErrorNoWriteAccess{}
 	}
 
 	return nil
@@ -117,15 +114,17 @@ func verifySoaToken(tokenStr string, s *service.AccountsService, requestProfileI
 func getSoaTokenRightsRequirements(methodName string) soatoken.RightsRequirements {
 	switch methodName {
 	case pb.AccountsService_EditProfile_FullMethodName, pb.AccountsService_UnregisterUser_FullMethodName:
-		{
-			return soatoken.RightsRequirements{
-				Read:  false,
-				Write: true,
-			}
+		return soatoken.RightsRequirements{
+			Read:  false,
+			Write: true,
+		}
+
+	default:
+		return soatoken.RightsRequirements{
+			Read:  false,
+			Write: false,
 		}
 	}
-
-	return soatoken.RightsRequirements{}
 }
 
 func Auth(s *service.AccountsService) grpc.UnaryServerInterceptor {
@@ -136,7 +135,7 @@ func Auth(s *service.AccountsService) grpc.UnaryServerInterceptor {
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
-			return nil, errors.New("metatada not found")
+			return nil, ErrorNoMetadata{}
 		}
 
 		parsedToken, err := parseTokenFromMetadata(md)
@@ -164,4 +163,40 @@ func Auth(s *service.AccountsService) grpc.UnaryServerInterceptor {
 
 		panic("shouldn't reach here")
 	}
+}
+
+type ErrorUnknownAuthKind struct{}
+type ErrorAccessDenied struct{}
+type ErrorNoAuth struct{}
+type ErrorInvalidToken struct{}
+type ErrorNoWriteAccess struct{}
+type ErrorNoReadAccess struct{}
+type ErrorNoMetadata struct{}
+
+func (ErrorUnknownAuthKind) Error() string {
+	return "unknown auth kind"
+}
+
+func (ErrorAccessDenied) Error() string {
+	return "access denied"
+}
+
+func (ErrorNoAuth) Error() string {
+	return "auth required"
+}
+
+func (ErrorInvalidToken) Error() string {
+	return "token is invalid"
+}
+
+func (ErrorNoWriteAccess) Error() string {
+	return "no write access"
+}
+
+func (ErrorNoReadAccess) Error() string {
+	return "no read access"
+}
+
+func (ErrorNoMetadata) Error() string {
+	return "metadata not found"
 }

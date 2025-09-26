@@ -3,41 +3,50 @@ package service
 import (
 	"context"
 	"crypto/ed25519"
-	"fmt"
 	"time"
 
+	"soa-socialnetwork/services/accounts/internal/repo"
 	"soa-socialnetwork/services/accounts/internal/soajwtissuer"
+	"soa-socialnetwork/services/accounts/internal/storage/postgres"
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	pb "soa-socialnetwork/services/accounts/proto"
 	"soa-socialnetwork/services/common/backjob"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AccountsService struct {
 	pb.UnimplementedAccountsServiceServer
 
+	Db          repo.Database
 	JwtVerifier soajwt.Verifier
 
-	dbPool    *pgxpool.Pool
 	outboxJob backjob.TickerJob
 	jwtIssuer soajwtissuer.Issuer
 }
 
 func NewAccountsService(cfg Config) (*AccountsService, error) {
-	connStr := fmt.Sprintf("user=%s password=%s host=%s port=5432 dbname=accounts-postgres sslmode=disable pool_max_conns=%d", cfg.DbUser, cfg.DbPassword, cfg.DbHost, cfg.DbPoolSize)
-	pool, err := pgxpool.New(context.Background(), connStr)
+	ctx := context.Background()
+
+	db, err := postgres.NewDatabase(ctx, postgres.Config{
+		Host:     cfg.DbHost,
+		User:     cfg.DbUser,
+		Password: cfg.DbPassword,
+		PoolSize: cfg.DbPoolSize,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	jwtIssuer := soajwtissuer.New(cfg.JwtPrivateKey)
 	pubkey := cfg.JwtPrivateKey.Public().(ed25519.PublicKey)
+
+	jwtIssuer := soajwtissuer.New(cfg.JwtPrivateKey)
+	jwtVerifier := soajwt.NewEd25519Verifier(pubkey)
+
 	service := &AccountsService{
-		dbPool:      pool,
-		outboxJob:   backjob.NewTickerJob(5*time.Second, checkOutboxJob(pool)),
-		jwtIssuer:   jwtIssuer,
-		JwtVerifier: soajwt.NewEd25519Verifier(pubkey),
+		Db:          &db,
+		JwtVerifier: jwtVerifier,
+
+		outboxJob: backjob.NewTickerJob(3*time.Second, checkOutboxJob(&db)),
+		jwtIssuer: jwtIssuer,
 	}
 
 	return service, nil
