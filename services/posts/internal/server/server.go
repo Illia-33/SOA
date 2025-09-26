@@ -13,17 +13,6 @@ import (
 type PostsServer struct {
 	grpcServer *grpc.Server
 	service    *service.PostsService
-	port       int
-}
-
-func (s *PostsServer) Run() error {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
-	if err != nil {
-		return err
-	}
-
-	s.service.Start()
-	return s.grpcServer.Serve(lis)
 }
 
 func Create(cfg service.PostsServiceConfig) (PostsServer, error) {
@@ -42,6 +31,15 @@ func Create(cfg service.PostsServiceConfig) (PostsServer, error) {
 	return PostsServer{
 		grpcServer: grpcServer,
 		service:    &service,
-		port:       cfg.Port,
 	}, nil
+}
+
+func (s *PostsServer) Run(port int) error {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return err
+	}
+
+	s.service.Start()
+	return s.grpcServer.Serve(lis)
 }

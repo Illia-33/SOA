@@ -3,7 +3,6 @@ package service
 import "crypto/ed25519"
 
 type PostsServiceConfig struct {
-	Port         int
 	DbHost       string
 	DbUser       string
 	DbPassword   string
