@@ -1,13 +1,13 @@
 package repos
 
 import (
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 	"time"
 )
 
 type OutboxRepository interface {
-	Put(dom.OutboxEvent) error
-	Fetch(OutboxFetchParams) ([]dom.OutboxEvent, error)
+	Put(models.OutboxEvent) error
+	Fetch(OutboxFetchParams) ([]models.OutboxEvent, error)
 }
 
 type OutboxFetchParams struct {

@@ -2,21 +2,21 @@ package repos
 
 import (
 	opt "soa-socialnetwork/services/common/option"
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 )
 
 type CommentsRepository interface {
-	New(dom.PostId, NewCommentData) (dom.CommentId, error)
-	List(dom.PostId, PagiToken) (CommentsList, error)
+	New(models.PostId, NewCommentData) (models.CommentId, error)
+	List(models.PostId, PagiToken) (CommentsList, error)
 }
 
 type NewCommentData struct {
-	AuthorId       dom.AccountId
-	Content        dom.Text
-	ReplyCommentId opt.Option[dom.CommentId]
+	AuthorId       models.AccountId
+	Content        models.Text
+	ReplyCommentId opt.Option[models.CommentId]
 }
 
 type CommentsList struct {
-	Comments      []dom.Comment
+	Comments      []models.Comment
 	NextPagiToken PagiToken
 }

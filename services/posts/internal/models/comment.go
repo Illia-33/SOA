@@ -1,4 +1,4 @@
-package domain
+package models
 
 import (
 	opt "soa-socialnetwork/services/common/option"
@@ -11,7 +11,7 @@ type Comment struct {
 	Id        CommentId
 	PostId    PostId
 	AuthorId  AccountId
-	Content   string
+	Content   Text
 	ReplyId   opt.Option[CommentId]
 	CreatedAt time.Time
 }

@@ -2,28 +2,28 @@ package repos
 
 import (
 	opt "soa-socialnetwork/services/common/option"
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 )
 
 type PostsRepository interface {
-	New(dom.PageId, NewPostData) (dom.PostId, error)
-	List(dom.PageId, PagiToken) (PostsList, error)
-	Get(dom.PostId) (dom.Post, error)
-	Edit(dom.PostId, EditedPostData) error
-	Delete(dom.PostId) error
+	New(models.PageId, NewPostData) (models.PostId, error)
+	List(models.PageId, PagiToken) (PostsList, error)
+	Get(models.PostId) (models.Post, error)
+	Edit(models.PostId, EditedPostData) error
+	Delete(models.PostId) error
 }
 
 type NewPostData struct {
-	AuthorId dom.AccountId
-	Content  dom.PostContent
+	AuthorId models.AccountId
+	Content  models.PostContent
 }
 
 type EditedPostData struct {
-	Text   opt.Option[dom.Text]
+	Text   opt.Option[models.Text]
 	Pinned opt.Option[bool]
 }
 
 type PostsList struct {
-	Posts         []dom.Post
+	Posts         []models.Post
 	NextPagiToken PagiToken
 }

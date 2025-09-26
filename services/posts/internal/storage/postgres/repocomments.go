@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	opt "soa-socialnetwork/services/common/option"
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 	"soa-socialnetwork/services/posts/internal/repos"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,7 +16,7 @@ type commentsRepo struct {
 	scope pgxScope
 }
 
-func (r commentsRepo) New(postId dom.PostId, data repos.NewCommentData) (dom.CommentId, error) {
+func (r commentsRepo) New(postId models.PostId, data repos.NewCommentData) (models.CommentId, error) {
 	sql := `
 	INSERT INTO comments(post_id, author_account_id, text_content, reply_comment_id)
 	VALUES ($1, $2, $3, $4)
@@ -26,7 +26,7 @@ func (r commentsRepo) New(postId dom.PostId, data repos.NewCommentData) (dom.Com
 	pgReplyCommentId := pgtype.Int4{Int32: int32(data.ReplyCommentId.Value), Valid: data.ReplyCommentId.HasValue}
 	row := r.scope.QueryRow(r.ctx, sql, postId, data.AuthorId, data.Content, pgReplyCommentId)
 
-	var id dom.CommentId
+	var id models.CommentId
 	err := row.Scan(&id)
 	if err != nil {
 		return 0, err
@@ -38,7 +38,7 @@ func (r commentsRepo) New(postId dom.PostId, data repos.NewCommentData) (dom.Com
 const COMMENTS_PAGE_SIZE = 10
 
 type commentsPagiToken struct {
-	LastId dom.CommentId `json:"lid"`
+	LastId models.CommentId `json:"lid"`
 }
 
 func decodeCommentsPagiToken(token repos.PagiToken) (commentsPagiToken, error) {
@@ -52,7 +52,7 @@ func encodeCommentsPagiToken(token commentsPagiToken) (repos.PagiToken, error) {
 	return encodePagiToken(token)
 }
 
-func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) (repos.CommentsList, error) {
+func (r commentsRepo) List(postId models.PostId, encodedPagiToken repos.PagiToken) (repos.CommentsList, error) {
 	pagiToken, err := decodeCommentsPagiToken(encodedPagiToken)
 	if err != nil {
 		return repos.CommentsList{}, err
@@ -71,7 +71,7 @@ func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) 
 		return repos.CommentsList{}, err
 	}
 
-	comments := make([]dom.Comment, 0, COMMENTS_PAGE_SIZE)
+	comments := make([]models.Comment, 0, COMMENTS_PAGE_SIZE)
 	for {
 		if !rows.Next() {
 			err := rows.Err()
@@ -82,7 +82,7 @@ func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) 
 		}
 
 		var pgReplyCommentId pgtype.Int4
-		var comment dom.Comment
+		var comment models.Comment
 
 		err := rows.Scan(&comment.Id, &comment.AuthorId, &comment.Content, &pgReplyCommentId, &comment.CreatedAt)
 		if err != nil {
@@ -91,7 +91,7 @@ func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) 
 
 		comment.PostId = postId
 		if pgReplyCommentId.Valid {
-			comment.ReplyId = opt.Some(dom.CommentId(pgReplyCommentId.Int32))
+			comment.ReplyId = opt.Some(models.CommentId(pgReplyCommentId.Int32))
 		}
 
 		comments = append(comments, comment)

@@ -1,4 +1,4 @@
-package domain
+package models
 
 import (
 	opt "soa-socialnetwork/services/common/option"
@@ -8,7 +8,7 @@ import (
 type PostId int32
 
 type PostContent struct {
-	Text         string
+	Text         Text
 	SourcePostId opt.Option[PostId]
 }
 

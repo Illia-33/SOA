@@ -1,10 +1,10 @@
 package repos
 
 import (
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 )
 
 type MetricsRepository interface {
-	NewView(dom.AccountId, dom.PostId) error
-	NewLike(dom.AccountId, dom.PostId) error
+	NewView(models.AccountId, models.PostId) error
+	NewLike(models.AccountId, models.PostId) error
 }

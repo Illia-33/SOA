@@ -2,14 +2,14 @@ package repos
 
 import (
 	opt "soa-socialnetwork/services/common/option"
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 )
 
 type PagesRepository interface {
-	GetByAccountId(dom.AccountId) (dom.Page, error)
-	GetByPageId(dom.PageId) (dom.Page, error)
-	GetByPostId(dom.PostId) (dom.Page, error)
-	Edit(dom.PageId, EditedPageSettings) error
+	GetByAccountId(models.AccountId) (models.Page, error)
+	GetByPageId(models.PageId) (models.Page, error)
+	GetByPostId(models.PostId) (models.Page, error)
+	Edit(models.PageId, EditedPageSettings) error
 }
 
 type EditedPageSettings struct {

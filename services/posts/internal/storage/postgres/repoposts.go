@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	opt "soa-socialnetwork/services/common/option"
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 	"soa-socialnetwork/services/posts/internal/repos"
 	"time"
 
@@ -19,7 +19,7 @@ type postsRepo struct {
 	scope pgxScope
 }
 
-func (r postsRepo) New(pageId dom.PageId, data repos.NewPostData) (dom.PostId, error) {
+func (r postsRepo) New(pageId models.PageId, data repos.NewPostData) (models.PostId, error) {
 	sql := `
 	INSERT INTO posts(page_id, author_account_id, text_content, source_post_id)
 	VALUES ($1, $2, $3, $4)
@@ -29,7 +29,7 @@ func (r postsRepo) New(pageId dom.PageId, data repos.NewPostData) (dom.PostId, e
 	pgSourcePostId := pgtype.Int4{Int32: int32(data.Content.SourcePostId.Value), Valid: data.Content.SourcePostId.HasValue}
 
 	row := r.scope.QueryRow(r.ctx, sql, pageId, data.AuthorId, data.Content.Text, pgSourcePostId)
-	var postId dom.PostId
+	var postId models.PostId
 	err := row.Scan(&postId)
 	if err != nil {
 		return 0, err
@@ -57,7 +57,7 @@ func encodePostsPagiToken(token postsPagiToken) (repos.PagiToken, error) {
 	return encodePagiToken(token)
 }
 
-func (r postsRepo) List(pageId dom.PageId, encodedPagiToken repos.PagiToken) (repos.PostsList, error) {
+func (r postsRepo) List(pageId models.PageId, encodedPagiToken repos.PagiToken) (repos.PostsList, error) {
 	sql := fmt.Sprintf(`
 	SELECT id, author_account_id, text_content, source_post_id, pinned, views_count, created_at
 	FROM posts
@@ -76,7 +76,7 @@ func (r postsRepo) List(pageId dom.PageId, encodedPagiToken repos.PagiToken) (re
 		return repos.PostsList{}, err
 	}
 
-	posts := make([]dom.Post, 0, POSTS_PAGE_SIZE)
+	posts := make([]models.Post, 0, POSTS_PAGE_SIZE)
 
 	for {
 		if !rows.Next() {
@@ -88,7 +88,7 @@ func (r postsRepo) List(pageId dom.PageId, encodedPagiToken repos.PagiToken) (re
 			break
 		}
 
-		var post dom.Post
+		var post models.Post
 		var pgSourcePostId pgtype.Int4
 		err := rows.Scan(&post.Id, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.ViewsCount, &post.CreatedAt)
 		if err != nil {
@@ -96,7 +96,7 @@ func (r postsRepo) List(pageId dom.PageId, encodedPagiToken repos.PagiToken) (re
 		}
 
 		post.PageId = pageId
-		post.Content.SourcePostId = opt.Option[dom.PostId]{Value: dom.PostId(pgSourcePostId.Int32), HasValue: pgSourcePostId.Valid}
+		post.Content.SourcePostId = opt.Option[models.PostId]{Value: models.PostId(pgSourcePostId.Int32), HasValue: pgSourcePostId.Valid}
 		posts = append(posts, post)
 	}
 
@@ -120,32 +120,32 @@ func (r postsRepo) List(pageId dom.PageId, encodedPagiToken repos.PagiToken) (re
 	}, nil
 }
 
-func (r postsRepo) Get(postId dom.PostId) (dom.Post, error) {
+func (r postsRepo) Get(postId models.PostId) (models.Post, error) {
 	sql := `
 	SELECT page_id, author_account_id, text_content, source_post_id, pinned, views_count, created_at
 	FROM posts
 	WHERE id = $1;
 	`
 
-	var post dom.Post
+	var post models.Post
 	var pgSourcePostId pgtype.Int4
 
 	row := r.scope.QueryRow(r.ctx, sql, postId)
 	err := row.Scan(&post.PageId, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.ViewsCount, &post.CreatedAt)
 	if err != nil {
-		return dom.Post{}, err
+		return models.Post{}, err
 	}
 
 	post.Id = postId
-	post.Content.SourcePostId = opt.Option[dom.PostId]{
-		Value:    dom.PostId(pgSourcePostId.Int32),
+	post.Content.SourcePostId = opt.Option[models.PostId]{
+		Value:    models.PostId(pgSourcePostId.Int32),
 		HasValue: pgSourcePostId.Valid,
 	}
 
 	return post, nil
 }
 
-func (r postsRepo) Edit(postId dom.PostId, edited repos.EditedPostData) error {
+func (r postsRepo) Edit(postId models.PostId, edited repos.EditedPostData) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE posts
@@ -183,7 +183,7 @@ func (r postsRepo) Edit(postId dom.PostId, edited repos.EditedPostData) error {
 	return nil
 }
 
-func (r postsRepo) Delete(postId dom.PostId) error {
+func (r postsRepo) Delete(postId models.PostId) error {
 	sql := `
 	WITH affected_rows AS (
 		DELETE FROM posts
