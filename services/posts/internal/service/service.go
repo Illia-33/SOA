@@ -28,7 +28,7 @@ type PostsService struct {
 }
 
 func New(cfg PostsServiceConfig) (PostsService, error) {
-	db, err := postgres.NewPoolDatabase(postgres.ConnectionConfig{
+	db, err := postgres.NewDatabase(context.Background(), postgres.Config{
 		Host:     cfg.DbHost,
 		User:     cfg.DbUser,
 		Password: cfg.DbPassword,

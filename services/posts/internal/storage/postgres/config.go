@@ -1,6 +1,6 @@
 package postgres
 
-type ConnectionConfig struct {
+type Config struct {
 	Host     string
 	User     string
 	Password string
