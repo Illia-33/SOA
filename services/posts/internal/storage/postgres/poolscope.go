@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"context"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/repo"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,7 +23,7 @@ type poolDatabase struct {
 	connPool connectionPool
 }
 
-func (o *poolDatabase) OpenConnection(ctx context.Context) (repos.Connection, error) {
+func (o *poolDatabase) OpenConnection(ctx context.Context) (repo.Connection, error) {
 	conn, err := o.connPool.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func (o *poolDatabase) OpenConnection(ctx context.Context) (repos.Connection, er
 	}, nil
 }
 
-func (o *poolDatabase) BeginTransaction(ctx context.Context) (repos.Transaction, error) {
+func (o *poolDatabase) BeginTransaction(ctx context.Context) (repo.Transaction, error) {
 	conn, err := o.connPool.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, err
@@ -63,31 +63,31 @@ func (c poolConnection) Close() error {
 	return nil
 }
 
-func (c poolConnection) Pages() repos.PagesRepository {
+func (c poolConnection) Pages() repo.PagesRepository {
 	return pagesRepo{
 		ctx:   c.ctx,
 		scope: c.conn,
 	}
 }
-func (c poolConnection) Posts() repos.PostsRepository {
+func (c poolConnection) Posts() repo.PostsRepository {
 	return postsRepo{
 		ctx:   c.ctx,
 		scope: c.conn,
 	}
 }
-func (c poolConnection) Comments() repos.CommentsRepository {
+func (c poolConnection) Comments() repo.CommentsRepository {
 	return commentsRepo{
 		ctx:   c.ctx,
 		scope: c.conn,
 	}
 }
-func (c poolConnection) Metrics() repos.MetricsRepository {
+func (c poolConnection) Metrics() repo.MetricsRepository {
 	return metricsRepo{
 		ctx:   c.ctx,
 		scope: c.conn,
 	}
 }
-func (c poolConnection) Outbox() repos.OutboxRepository {
+func (c poolConnection) Outbox() repo.OutboxRepository {
 	return outboxRepo{
 		ctx:   c.ctx,
 		scope: c.conn,
@@ -114,31 +114,31 @@ func (c transaction) Close() error {
 	return nil
 }
 
-func (c transaction) Pages() repos.PagesRepository {
+func (c transaction) Pages() repo.PagesRepository {
 	return pagesRepo{
 		ctx:   c.ctx,
 		scope: c.tx,
 	}
 }
-func (c transaction) Posts() repos.PostsRepository {
+func (c transaction) Posts() repo.PostsRepository {
 	return postsRepo{
 		ctx:   c.ctx,
 		scope: c.tx,
 	}
 }
-func (c transaction) Comments() repos.CommentsRepository {
+func (c transaction) Comments() repo.CommentsRepository {
 	return commentsRepo{
 		ctx:   c.ctx,
 		scope: c.tx,
 	}
 }
-func (c transaction) Metrics() repos.MetricsRepository {
+func (c transaction) Metrics() repo.MetricsRepository {
 	return metricsRepo{
 		ctx:   c.ctx,
 		scope: c.tx,
 	}
 }
-func (c transaction) Outbox() repos.OutboxRepository {
+func (c transaction) Outbox() repo.OutboxRepository {
 	return outboxRepo{
 		ctx:   c.ctx,
 		scope: c.tx,

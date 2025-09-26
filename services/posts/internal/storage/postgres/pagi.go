@@ -4,10 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/repo"
 )
 
-func decodePagiToken[DecodedToken any](encoded repos.PagiToken) (decoded DecodedToken, err error) {
+func decodePagiToken[DecodedToken any](encoded repo.PagiToken) (decoded DecodedToken, err error) {
 	raw, err := base64.RawURLEncoding.DecodeString(string(encoded))
 	if err != nil {
 		return
@@ -16,12 +16,12 @@ func decodePagiToken[DecodedToken any](encoded repos.PagiToken) (decoded Decoded
 	return
 }
 
-func encodePagiToken[EncodedToken any](token EncodedToken) (repos.PagiToken, error) {
+func encodePagiToken[EncodedToken any](token EncodedToken) (repo.PagiToken, error) {
 	raw, err := json.Marshal(&token)
 	if err != nil {
 		return "", err
 	}
 
 	encoded := base64.RawURLEncoding.EncodeToString(raw)
-	return repos.PagiToken(encoded), nil
+	return repo.PagiToken(encoded), nil
 }

@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 	"soa-socialnetwork/services/posts/internal/models"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/repo"
 	"time"
 )
 
@@ -21,7 +21,7 @@ func (r outboxRepo) Put(event models.OutboxEvent) error {
 	return err
 }
 
-func (r outboxRepo) Fetch(params repos.OutboxFetchParams) ([]models.OutboxEvent, error) {
+func (r outboxRepo) Fetch(params repo.OutboxFetchParams) ([]models.OutboxEvent, error) {
 	sql := `
 	WITH cte AS (
 		SELECT id, event_type, payload, created_at

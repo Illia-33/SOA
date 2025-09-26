@@ -1,3 +1,3 @@
-package repos
+package repo
 
 type PagiToken string

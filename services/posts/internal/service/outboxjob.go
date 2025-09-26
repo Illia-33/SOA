@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"soa-socialnetwork/services/common/backjob"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/repo"
 	"time"
 
 	"github.com/segmentio/kafka-go"
 )
 
-func newCheckOutboxCallback(db repos.Database, eventsPerCall int) backjob.JobCallback {
+func newCheckOutboxCallback(db repo.Database, eventsPerCall int) backjob.JobCallback {
 	kafkaWriter := kafka.Writer{
 		Addr:         kafka.TCP("stats-kafka:9092"),
 		RequiredAcks: kafka.RequireAll,
@@ -24,7 +24,7 @@ func newCheckOutboxCallback(db repos.Database, eventsPerCall int) backjob.JobCal
 		}
 		defer tx.Close()
 
-		events, err := tx.Outbox().Fetch(repos.OutboxFetchParams{
+		events, err := tx.Outbox().Fetch(repo.OutboxFetchParams{
 			Limit:         eventsPerCall,
 			LastCreatedAt: lastCreatedAt,
 		})

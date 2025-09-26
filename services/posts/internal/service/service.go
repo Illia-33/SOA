@@ -7,7 +7,7 @@ import (
 	"soa-socialnetwork/services/common/backjob"
 	opt "soa-socialnetwork/services/common/option"
 	"soa-socialnetwork/services/posts/internal/models"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/repo"
 	"soa-socialnetwork/services/posts/internal/service/interceptors"
 	"soa-socialnetwork/services/posts/internal/storage/postgres"
 	pb "soa-socialnetwork/services/posts/proto"
@@ -21,7 +21,7 @@ import (
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
-	Db          repos.Database
+	Db          repo.Database
 	JwtVerifier soajwt.Verifier
 
 	outboxJob backjob.TickerJob
@@ -75,7 +75,7 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 		return nil, err
 	}
 
-	err = conn.Pages().Edit(pageData.Id, repos.EditedPageSettings{
+	err = conn.Pages().Edit(pageData.Id, repo.EditedPageSettings{
 		VisibleForUnauthorized: opt.FromPointer(req.VisibleForUnauthorized),
 		CommentsEnabled:        opt.FromPointer(req.CommentsEnabled),
 		AnyoneCanPost:          opt.FromPointer(req.AnyoneCanPost),
@@ -146,7 +146,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	defer tx.Close()
 
-	postId, err := tx.Posts().New(pageData.Id, repos.NewPostData{
+	postId, err := tx.Posts().New(pageData.Id, repo.NewPostData{
 		AuthorId: authorId,
 		Content: models.PostContent{
 			Text:         models.Text(req.Text),
@@ -224,7 +224,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	defer tx.Close()
 
-	commentId, err := tx.Comments().New(models.PostId(req.PostId), repos.NewCommentData{
+	commentId, err := tx.Comments().New(models.PostId(req.PostId), repo.NewCommentData{
 		AuthorId:       authorId,
 		Content:        models.Text(req.Content),
 		ReplyCommentId: opt.FromPointer((*models.CommentId)(req.ReplyCommentId)),
@@ -285,7 +285,7 @@ func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsReque
 		}
 	}
 
-	commentsList, err := conn.Comments().List(models.PostId(req.PostId), repos.PagiToken(req.PageToken))
+	commentsList, err := conn.Comments().List(models.PostId(req.PostId), repo.PagiToken(req.PageToken))
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +356,7 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
 	}
 
-	postsList, err := conn.Posts().List(pageData.Id, repos.PagiToken(req.PageToken))
+	postsList, err := conn.Posts().List(pageData.Id, repo.PagiToken(req.PageToken))
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +404,7 @@ func (s *PostsService) EditPost(ctx context.Context, req *pb.EditPostRequest) (*
 		return &pb.Empty{}, nil
 	}
 
-	err = conn.Posts().Edit(post.Id, repos.EditedPostData{
+	err = conn.Posts().Edit(post.Id, repo.EditedPostData{
 		Text:   opt.FromPointer((*models.Text)(req.Text)),
 		Pinned: opt.FromPointer(req.Pinned),
 	})

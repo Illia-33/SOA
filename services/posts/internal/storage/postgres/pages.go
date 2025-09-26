@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 	"soa-socialnetwork/services/posts/internal/models"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/repo"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
@@ -88,7 +88,7 @@ func (r pagesRepo) GetByPostId(postId models.PostId) (models.Page, error) {
 	return page, nil
 }
 
-func (r pagesRepo) Edit(pageId models.PageId, edited repos.EditedPageSettings) error {
+func (r pagesRepo) Edit(pageId models.PageId, edited repo.EditedPageSettings) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE pages

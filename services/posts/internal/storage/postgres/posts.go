@@ -6,7 +6,7 @@ import (
 	"log"
 	opt "soa-socialnetwork/services/common/option"
 	"soa-socialnetwork/services/posts/internal/models"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/repo"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,7 +19,7 @@ type postsRepo struct {
 	scope pgxScope
 }
 
-func (r postsRepo) New(pageId models.PageId, data repos.NewPostData) (models.PostId, error) {
+func (r postsRepo) New(pageId models.PageId, data repo.NewPostData) (models.PostId, error) {
 	sql := `
 	INSERT INTO posts(page_id, author_account_id, text_content, source_post_id)
 	VALUES ($1, $2, $3, $4)
@@ -44,7 +44,7 @@ type postsPagiToken struct {
 	LastCreatedAt time.Time `json:"lcr"`
 }
 
-func decodePostsPagiToken(token repos.PagiToken) (postsPagiToken, error) {
+func decodePostsPagiToken(token repo.PagiToken) (postsPagiToken, error) {
 	if token == "" {
 		return postsPagiToken{
 			LastCreatedAt: time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC),
@@ -53,11 +53,11 @@ func decodePostsPagiToken(token repos.PagiToken) (postsPagiToken, error) {
 	return decodePagiToken[postsPagiToken](token)
 }
 
-func encodePostsPagiToken(token postsPagiToken) (repos.PagiToken, error) {
+func encodePostsPagiToken(token postsPagiToken) (repo.PagiToken, error) {
 	return encodePagiToken(token)
 }
 
-func (r postsRepo) List(pageId models.PageId, encodedPagiToken repos.PagiToken) (repos.PostsList, error) {
+func (r postsRepo) List(pageId models.PageId, encodedPagiToken repo.PagiToken) (repo.PostsList, error) {
 	sql := fmt.Sprintf(`
 	SELECT id, author_account_id, text_content, source_post_id, pinned, views_count, created_at
 	FROM posts
@@ -68,12 +68,12 @@ func (r postsRepo) List(pageId models.PageId, encodedPagiToken repos.PagiToken) 
 
 	pagiToken, err := decodePostsPagiToken(encodedPagiToken)
 	if err != nil {
-		return repos.PostsList{}, err
+		return repo.PostsList{}, err
 	}
 
 	rows, err := r.scope.Query(r.ctx, sql, pageId, pagiToken.LastCreatedAt)
 	if err != nil {
-		return repos.PostsList{}, err
+		return repo.PostsList{}, err
 	}
 
 	posts := make([]models.Post, 0, POSTS_PAGE_SIZE)
@@ -82,7 +82,7 @@ func (r postsRepo) List(pageId models.PageId, encodedPagiToken repos.PagiToken) 
 		if !rows.Next() {
 			err := rows.Err()
 			if err != nil {
-				return repos.PostsList{}, err
+				return repo.PostsList{}, err
 			}
 
 			break
@@ -92,7 +92,7 @@ func (r postsRepo) List(pageId models.PageId, encodedPagiToken repos.PagiToken) 
 		var pgSourcePostId pgtype.Int4
 		err := rows.Scan(&post.Id, &post.AuthorAccountId, &post.Content.Text, &pgSourcePostId, &post.Pinned, &post.ViewsCount, &post.CreatedAt)
 		if err != nil {
-			return repos.PostsList{}, err
+			return repo.PostsList{}, err
 		}
 
 		post.PageId = pageId
@@ -100,7 +100,7 @@ func (r postsRepo) List(pageId models.PageId, encodedPagiToken repos.PagiToken) 
 		posts = append(posts, post)
 	}
 
-	var nextPagiToken repos.PagiToken
+	var nextPagiToken repo.PagiToken
 	if len(posts) > 0 {
 		token := postsPagiToken{
 			LastCreatedAt: posts[len(posts)-1].CreatedAt,
@@ -114,7 +114,7 @@ func (r postsRepo) List(pageId models.PageId, encodedPagiToken repos.PagiToken) 
 		}
 	}
 
-	return repos.PostsList{
+	return repo.PostsList{
 		Posts:         posts,
 		NextPagiToken: nextPagiToken,
 	}, nil
@@ -145,7 +145,7 @@ func (r postsRepo) Get(postId models.PostId) (models.Post, error) {
 	return post, nil
 }
 
-func (r postsRepo) Edit(postId models.PostId, edited repos.EditedPostData) error {
+func (r postsRepo) Edit(postId models.PostId, edited repo.EditedPostData) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE posts

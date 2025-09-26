@@ -1,4 +1,4 @@
-package repos
+package repo
 
 import (
 	"soa-socialnetwork/services/posts/internal/models"
