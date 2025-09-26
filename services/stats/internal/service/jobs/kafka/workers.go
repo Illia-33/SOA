@@ -7,7 +7,7 @@ import (
 	"soa-socialnetwork/services/stats/pkg/models"
 )
 
-type Processor struct {
+type Workers struct {
 	view         topicWorker[models.PostViewEvent]
 	like         topicWorker[models.PostLikeEvent]
 	comment      topicWorker[models.PostCommentEvent]
@@ -15,14 +15,14 @@ type Processor struct {
 	posts        topicWorker[models.PostEvent]
 }
 
-func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processor, err error) {
+func NewWorkers(connCfg kafka.ConnectionConfig, db repo.Database) (w Workers, err error) {
 	defer func() {
 		if err != nil {
-			ps.Close()
+			w.Close()
 		}
 	}()
 
-	ps.view, err = newTopicProcessor(
+	w.view, err = newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "view",
@@ -37,10 +37,10 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
 
-	ps.like, err = newTopicProcessor(
+	w.like, err = newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "like",
@@ -55,10 +55,10 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
 
-	ps.comment, err = newTopicProcessor(
+	w.comment, err = newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "comment",
@@ -73,10 +73,10 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
 
-	ps.registration, err = newTopicProcessor(
+	w.registration, err = newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "registration",
@@ -91,10 +91,10 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
 
-	ps.posts, err = newTopicProcessor(
+	w.posts, err = newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "post",
@@ -109,13 +109,13 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
 
 	return
 }
 
-func (r *Processor) Start(ctx context.Context) {
+func (r *Workers) Start(ctx context.Context) {
 	r.view.start(ctx)
 	r.like.start(ctx)
 	r.comment.start(ctx)
@@ -123,7 +123,7 @@ func (r *Processor) Start(ctx context.Context) {
 	r.posts.start(ctx)
 }
 
-func (r *Processor) Close() {
+func (r *Workers) Close() {
 	r.view.close()
 	r.like.close()
 	r.comment.close()

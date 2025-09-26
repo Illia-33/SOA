@@ -17,7 +17,7 @@ type topicWorker[MsgType any] struct {
 	processBatch batchProcessor[MsgType]
 }
 
-func newTopicProcessor[MsgType any](
+func newTopicWorker[MsgType any](
 	connCfg kafka.ConnectionConfig,
 	readerCfg kafka.ConsumerConfig,
 	processBatch batchProcessor[MsgType],
