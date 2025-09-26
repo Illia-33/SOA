@@ -35,8 +35,9 @@ func (a *GrpcAccessor[TStub]) createStub(qp *query.Params) (TStub, error) {
 }
 
 func NewGatewayService(cfg Config) GatewayService {
+	jwtVerifier := soajwt.NewEd25519Verifier(cfg.JwtPublicKey)
 	return GatewayService{
-		JwtVerifier: soajwt.NewEd25519Verifier(cfg.JwtPublicKey),
+		JwtVerifier: &jwtVerifier,
 		AccountsGrpcAccessor: GrpcAccessor[accountsPb.AccountsServiceClient]{
 			Target:  fmt.Sprintf("%s:%d", cfg.AccountsServiceHost, cfg.AccountsServicePort),
 			Factory: grpcutils.DefaultAccountsStubCreator{},
