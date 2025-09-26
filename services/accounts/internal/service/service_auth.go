@@ -6,6 +6,7 @@ import (
 	"soa-socialnetwork/services/accounts/internal/models"
 	"soa-socialnetwork/services/accounts/internal/repo"
 	"soa-socialnetwork/services/accounts/internal/soajwtissuer"
+	"soa-socialnetwork/services/accounts/pkg/soatoken"
 	"time"
 
 	pb "soa-socialnetwork/services/accounts/proto"
@@ -74,17 +75,12 @@ func (s *AccountsService) CreateApiToken(ctx context.Context, req *pb.CreateApiT
 		return nil, err
 	}
 
-	token, err := buildSoaApiToken(accountData{
-		accountId: int(accountParams.Id),
-		profileId: uuid.MustParse(string(profileId)),
+	token := soatoken.NewSoaToken(soatoken.Payload{
+		AccountId: int32(accountParams.Id),
+		ProfileId: uuid.MustParse(string(profileId)),
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	tokenBase64 := token.toBase64()
-
-	validUntil, err := conn.ApiTokens().Put(models.ApiToken(tokenBase64), repo.ApiTokenParams{
+	validUntil, err := conn.ApiTokens().Put(models.ApiToken(token), repo.ApiTokenParams{
 		AccountId:   int(accountParams.Id),
 		ReadAccess:  req.Params.ReadAccess,
 		WriteAccess: req.Params.WriteAccess,
@@ -95,7 +91,7 @@ func (s *AccountsService) CreateApiToken(ctx context.Context, req *pb.CreateApiT
 	}
 
 	return &pb.CreateApiTokenResponse{
-		Token:      tokenBase64,
+		Token:      token,
 		ValidUntil: timestamppb.New(validUntil),
 	}, nil
 }
