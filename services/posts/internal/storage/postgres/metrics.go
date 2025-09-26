@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 	"log"
-	dom "soa-socialnetwork/services/posts/internal/domain"
+	"soa-socialnetwork/services/posts/internal/models"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -14,7 +14,7 @@ type metricsRepo struct {
 	scope pgxScope
 }
 
-func (r metricsRepo) NewView(accountId dom.AccountId, postId dom.PostId) error {
+func (r metricsRepo) NewView(accountId models.AccountId, postId models.PostId) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE posts
@@ -43,7 +43,7 @@ func (r metricsRepo) NewView(accountId dom.AccountId, postId dom.PostId) error {
 	return nil
 }
 
-func (r metricsRepo) NewLike(accountId dom.AccountId, postId dom.PostId) error {
+func (r metricsRepo) NewLike(accountId models.AccountId, postId models.PostId) error {
 	sql := `
 	INSERT INTO likes(post_id, author_account_id)
 	VALUES ($1, $2)

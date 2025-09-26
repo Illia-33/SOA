@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
-	dom "soa-socialnetwork/services/posts/internal/domain"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/models"
+	"soa-socialnetwork/services/posts/internal/repo"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
@@ -17,18 +17,18 @@ type pagesRepo struct {
 	scope pgxScope
 }
 
-func (r pagesRepo) GetByAccountId(accountId dom.AccountId) (dom.Page, error) {
+func (r pagesRepo) GetByAccountId(accountId models.AccountId) (models.Page, error) {
 	sql := `
 	SELECT id, visible_for_unauthorized, comments_enabled, anyone_can_post
 	FROM pages
 	WHERE account_id = $1;
 	`
-	var page dom.Page
+	var page models.Page
 
 	row := r.scope.QueryRow(r.ctx, sql, accountId)
 	err := row.Scan(&page.Id, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err == nil { // ok, returning
-		page.AccountId = dom.AccountId(accountId)
+		page.AccountId = models.AccountId(accountId)
 		return page, nil
 	}
 
@@ -42,32 +42,32 @@ func (r pagesRepo) GetByAccountId(accountId dom.AccountId) (dom.Page, error) {
 	row = r.scope.QueryRow(r.ctx, sql, accountId)
 	err = row.Scan(&page.Id, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err != nil {
-		return dom.Page{}, err
+		return models.Page{}, err
 	}
 
-	page.AccountId = dom.AccountId(accountId)
+	page.AccountId = models.AccountId(accountId)
 	return page, nil
 }
 
-func (r pagesRepo) GetByPageId(pageId dom.PageId) (dom.Page, error) {
+func (r pagesRepo) GetByPageId(pageId models.PageId) (models.Page, error) {
 	sql := `
 	SELECT account_id, visible_for_unauthorized, comments_enabled, anyone_can_post
 	FROM pages
 	WHERE id = $1;
 	`
-	var page dom.Page
+	var page models.Page
 
 	row := r.scope.QueryRow(r.ctx, sql, pageId)
 	err := row.Scan(&page.AccountId, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err != nil {
-		return dom.Page{}, status.Error(codes.NotFound, "page not found")
+		return models.Page{}, status.Error(codes.NotFound, "page not found")
 	}
 
-	page.Id = dom.PageId(pageId)
+	page.Id = models.PageId(pageId)
 	return page, nil
 }
 
-func (r pagesRepo) GetByPostId(postId dom.PostId) (dom.Page, error) {
+func (r pagesRepo) GetByPostId(postId models.PostId) (models.Page, error) {
 	sql := `
 	SELECT id, account_id, visible_for_unauthorized, comments_enabled, anyone_can_post
 	FROM pages
@@ -77,18 +77,18 @@ func (r pagesRepo) GetByPostId(postId dom.PostId) (dom.Page, error) {
 		WHERE id = $1
 	);
 	`
-	var page dom.Page
+	var page models.Page
 
 	row := r.scope.QueryRow(r.ctx, sql, postId)
 	err := row.Scan(&page.Id, &page.AccountId, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err != nil {
-		return dom.Page{}, status.Error(codes.NotFound, "page not found")
+		return models.Page{}, status.Error(codes.NotFound, "page not found")
 	}
 
 	return page, nil
 }
 
-func (r pagesRepo) Edit(pageId dom.PageId, edited repos.EditedPageSettings) error {
+func (r pagesRepo) Edit(pageId models.PageId, edited repo.EditedPageSettings) error {
 	sql := `
 	WITH affected_rows AS (
 		UPDATE pages

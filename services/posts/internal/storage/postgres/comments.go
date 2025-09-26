@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	opt "soa-socialnetwork/services/common/option"
-	dom "soa-socialnetwork/services/posts/internal/domain"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/models"
+	"soa-socialnetwork/services/posts/internal/repo"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -16,7 +16,7 @@ type commentsRepo struct {
 	scope pgxScope
 }
 
-func (r commentsRepo) New(postId dom.PostId, data repos.NewCommentData) (dom.CommentId, error) {
+func (r commentsRepo) New(postId models.PostId, data repo.NewCommentData) (models.CommentId, error) {
 	sql := `
 	INSERT INTO comments(post_id, author_account_id, text_content, reply_comment_id)
 	VALUES ($1, $2, $3, $4)
@@ -26,7 +26,7 @@ func (r commentsRepo) New(postId dom.PostId, data repos.NewCommentData) (dom.Com
 	pgReplyCommentId := pgtype.Int4{Int32: int32(data.ReplyCommentId.Value), Valid: data.ReplyCommentId.HasValue}
 	row := r.scope.QueryRow(r.ctx, sql, postId, data.AuthorId, data.Content, pgReplyCommentId)
 
-	var id dom.CommentId
+	var id models.CommentId
 	err := row.Scan(&id)
 	if err != nil {
 		return 0, err
@@ -38,24 +38,24 @@ func (r commentsRepo) New(postId dom.PostId, data repos.NewCommentData) (dom.Com
 const COMMENTS_PAGE_SIZE = 10
 
 type commentsPagiToken struct {
-	LastId dom.CommentId `json:"lid"`
+	LastId models.CommentId `json:"lid"`
 }
 
-func decodeCommentsPagiToken(token repos.PagiToken) (commentsPagiToken, error) {
+func decodeCommentsPagiToken(token repo.PagiToken) (commentsPagiToken, error) {
 	if token == "" {
 		return commentsPagiToken{}, nil
 	}
 	return decodePagiToken[commentsPagiToken](token)
 }
 
-func encodeCommentsPagiToken(token commentsPagiToken) (repos.PagiToken, error) {
+func encodeCommentsPagiToken(token commentsPagiToken) (repo.PagiToken, error) {
 	return encodePagiToken(token)
 }
 
-func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) (repos.CommentsList, error) {
+func (r commentsRepo) List(postId models.PostId, encodedPagiToken repo.PagiToken) (repo.CommentsList, error) {
 	pagiToken, err := decodeCommentsPagiToken(encodedPagiToken)
 	if err != nil {
-		return repos.CommentsList{}, err
+		return repo.CommentsList{}, err
 	}
 
 	sql := fmt.Sprintf(`
@@ -68,36 +68,36 @@ func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) 
 
 	rows, err := r.scope.Query(r.ctx, sql, postId, pagiToken.LastId)
 	if err != nil {
-		return repos.CommentsList{}, err
+		return repo.CommentsList{}, err
 	}
 
-	comments := make([]dom.Comment, 0, COMMENTS_PAGE_SIZE)
+	comments := make([]models.Comment, 0, COMMENTS_PAGE_SIZE)
 	for {
 		if !rows.Next() {
 			err := rows.Err()
 			if err != nil {
-				return repos.CommentsList{}, err
+				return repo.CommentsList{}, err
 			}
 			break
 		}
 
 		var pgReplyCommentId pgtype.Int4
-		var comment dom.Comment
+		var comment models.Comment
 
 		err := rows.Scan(&comment.Id, &comment.AuthorId, &comment.Content, &pgReplyCommentId, &comment.CreatedAt)
 		if err != nil {
-			return repos.CommentsList{}, err
+			return repo.CommentsList{}, err
 		}
 
 		comment.PostId = postId
 		if pgReplyCommentId.Valid {
-			comment.ReplyId = opt.Some(dom.CommentId(pgReplyCommentId.Int32))
+			comment.ReplyId = opt.Some(models.CommentId(pgReplyCommentId.Int32))
 		}
 
 		comments = append(comments, comment)
 	}
 
-	var nextPagiToken repos.PagiToken
+	var nextPagiToken repo.PagiToken
 	if len(comments) > 0 {
 		token := commentsPagiToken{
 			LastId: comments[len(comments)-1].Id,
@@ -110,7 +110,7 @@ func (r commentsRepo) List(postId dom.PostId, encodedPagiToken repos.PagiToken) 
 		}
 	}
 
-	return repos.CommentsList{
+	return repo.CommentsList{
 		Comments:      comments,
 		NextPagiToken: nextPagiToken,
 	}, nil

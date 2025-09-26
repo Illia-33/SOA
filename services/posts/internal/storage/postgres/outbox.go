@@ -2,8 +2,8 @@ package postgres
 
 import (
 	"context"
-	dom "soa-socialnetwork/services/posts/internal/domain"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/models"
+	"soa-socialnetwork/services/posts/internal/repo"
 	"time"
 )
 
@@ -12,7 +12,7 @@ type outboxRepo struct {
 	scope pgxScope
 }
 
-func (r outboxRepo) Put(event dom.OutboxEvent) error {
+func (r outboxRepo) Put(event models.OutboxEvent) error {
 	sql := `
 	INSERT INTO outbox(event_type, payload)
 	VALUES ($1, $2::jsonb);
@@ -21,7 +21,7 @@ func (r outboxRepo) Put(event dom.OutboxEvent) error {
 	return err
 }
 
-func (r outboxRepo) Fetch(params repos.OutboxFetchParams) ([]dom.OutboxEvent, error) {
+func (r outboxRepo) Fetch(params repo.OutboxFetchParams) ([]models.OutboxEvent, error) {
 	sql := `
 	WITH cte AS (
 		SELECT id, event_type, payload, created_at
@@ -45,7 +45,7 @@ func (r outboxRepo) Fetch(params repos.OutboxFetchParams) ([]dom.OutboxEvent, er
 		return nil, err
 	}
 
-	events := make([]dom.OutboxEvent, 0, params.Limit)
+	events := make([]models.OutboxEvent, 0, params.Limit)
 	for {
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
@@ -65,9 +65,9 @@ func (r outboxRepo) Fetch(params repos.OutboxFetchParams) ([]dom.OutboxEvent, er
 			return nil, err
 		}
 
-		events = append(events, dom.OutboxEvent{
+		events = append(events, models.OutboxEvent{
 			Type:      eventType,
-			Payload:   dom.OutboxEventPayload(jsonPayload),
+			Payload:   models.OutboxEventPayload(jsonPayload),
 			CreatedAt: createdAt,
 		})
 	}

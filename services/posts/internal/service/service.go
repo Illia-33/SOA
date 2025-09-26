@@ -6,8 +6,8 @@ import (
 	"soa-socialnetwork/services/accounts/pkg/soajwt"
 	"soa-socialnetwork/services/common/backjob"
 	opt "soa-socialnetwork/services/common/option"
-	dom "soa-socialnetwork/services/posts/internal/domain"
-	"soa-socialnetwork/services/posts/internal/repos"
+	"soa-socialnetwork/services/posts/internal/models"
+	"soa-socialnetwork/services/posts/internal/repo"
 	"soa-socialnetwork/services/posts/internal/service/interceptors"
 	"soa-socialnetwork/services/posts/internal/storage/postgres"
 	pb "soa-socialnetwork/services/posts/proto"
@@ -21,14 +21,14 @@ import (
 type PostsService struct {
 	pb.UnimplementedPostsServiceServer
 
-	Db          repos.Database
+	Db          repo.Database
 	JwtVerifier soajwt.Verifier
 
 	outboxJob backjob.TickerJob
 }
 
 func New(cfg PostsServiceConfig) (PostsService, error) {
-	db, err := postgres.NewPoolDatabase(postgres.ConnectionConfig{
+	db, err := postgres.NewDatabase(context.Background(), postgres.Config{
 		Host:     cfg.DbHost,
 		User:     cfg.DbUser,
 		Password: cfg.DbPassword,
@@ -59,7 +59,7 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
 	}
 
-	if dom.AccountId(req.AccountId) != accountId.(dom.AccountId) {
+	if models.AccountId(req.AccountId) != accountId.(models.AccountId) {
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
@@ -69,13 +69,13 @@ func (s *PostsService) EditPageSettings(ctx context.Context, req *pb.EditPageSet
 	}
 	defer conn.Close()
 
-	pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.AccountId))
+	pageData, err := conn.Pages().GetByAccountId(models.AccountId(req.AccountId))
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = conn.Pages().Edit(pageData.Id, repos.EditedPageSettings{
+	err = conn.Pages().Edit(pageData.Id, repo.EditedPageSettings{
 		VisibleForUnauthorized: opt.FromPointer(req.VisibleForUnauthorized),
 		CommentsEnabled:        opt.FromPointer(req.CommentsEnabled),
 		AnyoneCanPost:          opt.FromPointer(req.AnyoneCanPost),
@@ -95,7 +95,7 @@ func (s *PostsService) GetPageSettings(ctx context.Context, req *pb.GetPageSetti
 	}
 	defer conn.Close()
 
-	pageSettings, err := conn.Pages().GetByAccountId(dom.AccountId(req.AccountId))
+	pageSettings, err := conn.Pages().GetByAccountId(models.AccountId(req.AccountId))
 
 	if err != nil {
 		return nil, err
@@ -113,23 +113,23 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	if authorIdVal == nil {
 		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
 	}
-	authorId := authorIdVal.(dom.AccountId)
+	authorId := authorIdVal.(models.AccountId)
 
-	pageData, permissionErr := func() (dom.Page, error) {
+	pageData, permissionErr := func() (models.Page, error) {
 		conn, err := s.Db.OpenConnection(ctx)
 		if err != nil {
-			return dom.Page{}, err
+			return models.Page{}, err
 		}
 		defer conn.Close()
 
-		pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
+		pageData, err := conn.Pages().GetByAccountId(models.AccountId(req.PageAccountId))
 		if err != nil {
-			return dom.Page{}, err
+			return models.Page{}, err
 		}
 
-		if authorId != dom.AccountId(req.PageAccountId) {
+		if authorId != models.AccountId(req.PageAccountId) {
 			if !pageData.AnyoneCanPost {
-				return dom.Page{}, status.Error(codes.PermissionDenied, "page owner prohibited posting")
+				return models.Page{}, status.Error(codes.PermissionDenied, "page owner prohibited posting")
 			}
 		}
 
@@ -146,11 +146,11 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 	}
 	defer tx.Close()
 
-	postId, err := tx.Posts().New(pageData.Id, repos.NewPostData{
+	postId, err := tx.Posts().New(pageData.Id, repo.NewPostData{
 		AuthorId: authorId,
-		Content: dom.PostContent{
-			Text:         dom.Text(req.Text),
-			SourcePostId: opt.FromPointer((*dom.PostId)(req.Repost)),
+		Content: models.PostContent{
+			Text:         models.Text(req.Text),
+			SourcePostId: opt.FromPointer((*models.PostId)(req.Repost)),
 		},
 	})
 
@@ -169,7 +169,7 @@ func (s *PostsService) NewPost(ctx context.Context, req *pb.NewPostRequest) (*pb
 		return nil, err
 	}
 
-	err = tx.Outbox().Put(dom.OutboxEvent{
+	err = tx.Outbox().Put(models.OutboxEvent{
 		Type:    "post",
 		Payload: payload,
 	})
@@ -193,7 +193,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	if authorIdVal == nil {
 		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
 	}
-	authorId := authorIdVal.(dom.AccountId)
+	authorId := authorIdVal.(models.AccountId)
 
 	commentsEnabledErr := func() error {
 		conn, err := s.Db.OpenConnection(ctx)
@@ -202,7 +202,7 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 		}
 		defer conn.Close()
 
-		pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
+		pageData, err := conn.Pages().GetByPostId(models.PostId(req.PostId))
 		if err != nil {
 			return err
 		}
@@ -224,10 +224,10 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 	}
 	defer tx.Close()
 
-	commentId, err := tx.Comments().New(dom.PostId(req.PostId), repos.NewCommentData{
+	commentId, err := tx.Comments().New(models.PostId(req.PostId), repo.NewCommentData{
 		AuthorId:       authorId,
-		Content:        dom.Text(req.Content),
-		ReplyCommentId: opt.FromPointer((*dom.CommentId)(req.ReplyCommentId)),
+		Content:        models.Text(req.Content),
+		ReplyCommentId: opt.FromPointer((*models.CommentId)(req.ReplyCommentId)),
 	})
 
 	if err != nil {
@@ -246,9 +246,9 @@ func (s *PostsService) NewComment(ctx context.Context, req *pb.NewCommentRequest
 		return nil, err
 	}
 
-	err = tx.Outbox().Put(dom.OutboxEvent{
+	err = tx.Outbox().Put(models.OutboxEvent{
 		Type:    "comment",
-		Payload: dom.OutboxEventPayload(payload),
+		Payload: models.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		tx.Rollback()
@@ -274,7 +274,7 @@ func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsReque
 
 	authorizedId := ctx.Value(interceptors.AUTHOR_ACCOUNT_ID_CTX_KEY)
 	if authorizedId == nil {
-		pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
+		pageData, err := conn.Pages().GetByPostId(models.PostId(req.PostId))
 
 		if err != nil {
 			return nil, err
@@ -285,7 +285,7 @@ func (s *PostsService) GetComments(ctx context.Context, req *pb.GetCommentsReque
 		}
 	}
 
-	commentsList, err := conn.Comments().List(dom.PostId(req.PostId), repos.PagiToken(req.PageToken))
+	commentsList, err := conn.Comments().List(models.PostId(req.PostId), repo.PagiToken(req.PageToken))
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +313,7 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 	}
 	defer conn.Close()
 
-	pageData, err := conn.Pages().GetByPostId(dom.PostId(req.PostId))
+	pageData, err := conn.Pages().GetByPostId(models.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (s *PostsService) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb
 		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
 	}
 
-	post, err := conn.Posts().Get(dom.PostId(req.PostId))
+	post, err := conn.Posts().Get(models.PostId(req.PostId))
 
 	if err != nil {
 		return nil, err
@@ -346,7 +346,7 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 	}
 	defer conn.Close()
 
-	pageData, err := conn.Pages().GetByAccountId(dom.AccountId(req.PageAccountId))
+	pageData, err := conn.Pages().GetByAccountId(models.AccountId(req.PageAccountId))
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +356,7 @@ func (s *PostsService) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*
 		return nil, status.Error(codes.PermissionDenied, "denied for unauthorized")
 	}
 
-	postsList, err := conn.Posts().List(pageData.Id, repos.PagiToken(req.PageToken))
+	postsList, err := conn.Posts().List(pageData.Id, repo.PagiToken(req.PageToken))
 	if err != nil {
 		return nil, err
 	}
@@ -391,12 +391,12 @@ func (s *PostsService) EditPost(ctx context.Context, req *pb.EditPostRequest) (*
 	}
 	defer conn.Close()
 
-	post, err := conn.Posts().Get(dom.PostId(req.PostId))
+	post, err := conn.Posts().Get(models.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
 
-	if post.AuthorAccountId != authorizedId.(dom.AccountId) {
+	if post.AuthorAccountId != authorizedId.(models.AccountId) {
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
 
@@ -404,8 +404,8 @@ func (s *PostsService) EditPost(ctx context.Context, req *pb.EditPostRequest) (*
 		return &pb.Empty{}, nil
 	}
 
-	err = conn.Posts().Edit(post.Id, repos.EditedPostData{
-		Text:   opt.FromPointer((*dom.Text)(req.Text)),
+	err = conn.Posts().Edit(post.Id, repo.EditedPostData{
+		Text:   opt.FromPointer((*models.Text)(req.Text)),
 		Pinned: opt.FromPointer(req.Pinned),
 	})
 
@@ -421,7 +421,7 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 	if authorizedIdVal == nil {
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
-	authorizedId := authorizedIdVal.(dom.AccountId)
+	authorizedId := authorizedIdVal.(models.AccountId)
 
 	conn, err := s.Db.OpenConnection(ctx)
 	if err != nil {
@@ -429,13 +429,13 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 	}
 	defer conn.Close()
 
-	post, err := conn.Posts().Get(dom.PostId(req.PostId))
+	post, err := conn.Posts().Get(models.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
 
 	if post.AuthorAccountId != authorizedId {
-		page, err := conn.Pages().GetByPageId(dom.PageId(post.PageId))
+		page, err := conn.Pages().GetByPageId(models.PageId(post.PageId))
 
 		if err != nil {
 			return nil, err
@@ -446,7 +446,7 @@ func (s *PostsService) DeletePost(ctx context.Context, req *pb.DeletePostRequest
 		}
 	}
 
-	err = conn.Posts().Delete(dom.PostId(req.PostId))
+	err = conn.Posts().Delete(models.PostId(req.PostId))
 	if err != nil {
 		return nil, err
 	}
@@ -459,7 +459,7 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 	if authorizedIdVal == nil {
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
-	authorizedId := authorizedIdVal.(dom.AccountId)
+	authorizedId := authorizedIdVal.(models.AccountId)
 
 	tx, err := s.Db.BeginTransaction(ctx)
 	if err != nil {
@@ -467,7 +467,7 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 	}
 	defer tx.Close()
 
-	err = tx.Metrics().NewView(authorizedId, dom.PostId(req.PostId))
+	err = tx.Metrics().NewView(authorizedId, models.PostId(req.PostId))
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -483,9 +483,9 @@ func (s *PostsService) NewView(ctx context.Context, req *pb.NewViewRequest) (*pb
 		return nil, err
 	}
 
-	err = tx.Outbox().Put(dom.OutboxEvent{
+	err = tx.Outbox().Put(models.OutboxEvent{
 		Type:    "view",
-		Payload: dom.OutboxEventPayload(payload),
+		Payload: models.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		tx.Rollback()
@@ -505,7 +505,7 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 	if authorizedIdVal == nil {
 		return nil, status.Error(codes.PermissionDenied, "permission denied")
 	}
-	authorizedId := authorizedIdVal.(dom.AccountId)
+	authorizedId := authorizedIdVal.(models.AccountId)
 
 	tx, err := s.Db.BeginTransaction(ctx)
 	if err != nil {
@@ -513,7 +513,7 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 	}
 	defer tx.Close()
 
-	err = tx.Metrics().NewLike(authorizedId, dom.PostId(req.PostId))
+	err = tx.Metrics().NewLike(authorizedId, models.PostId(req.PostId))
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -529,9 +529,9 @@ func (s *PostsService) NewLike(ctx context.Context, req *pb.NewLikeRequest) (*pb
 		return nil, err
 	}
 
-	err = tx.Outbox().Put(dom.OutboxEvent{
+	err = tx.Outbox().Put(models.OutboxEvent{
 		Type:    "like",
-		Payload: dom.OutboxEventPayload(payload),
+		Payload: models.OutboxEventPayload(payload),
 	})
 	if err != nil {
 		tx.Rollback()
