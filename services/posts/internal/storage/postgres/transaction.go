@@ -24,6 +24,7 @@ func (t *transaction) Close() error {
 	if t.conn != nil {
 		t.tx.Rollback(t.ctx)
 		t.conn.Release()
+		t.tx = nil
 		t.conn = nil
 	}
 
