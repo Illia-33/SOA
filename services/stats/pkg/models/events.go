@@ -28,7 +28,7 @@ type RegistrationEvent struct {
 }
 
 type PostEvent struct {
-	PostId    PostId
-	AuthorId  AccountId
-	Timestamp time.Time
+	PostId    PostId    `json:"post_id"`
+	AuthorId  AccountId `json:"author_id"`
+	Timestamp time.Time `json:"timestamp"`
 }

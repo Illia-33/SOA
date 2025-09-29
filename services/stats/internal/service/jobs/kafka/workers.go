@@ -2,27 +2,29 @@ package kafkajobs
 
 import (
 	"context"
+	"errors"
 	"soa-socialnetwork/services/stats/internal/kafka"
 	"soa-socialnetwork/services/stats/internal/repo"
 	"soa-socialnetwork/services/stats/pkg/models"
 )
 
-type Processor struct {
-	view         topicWorker[models.PostViewEvent]
-	like         topicWorker[models.PostLikeEvent]
-	comment      topicWorker[models.PostCommentEvent]
-	registration topicWorker[models.RegistrationEvent]
-	posts        topicWorker[models.PostEvent]
+type Workers struct {
+	workers []iTopicWorker
 }
 
-func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processor, err error) {
+func NewWorkers(connCfg kafka.ConnectionConfig, db repo.Database) (Workers, error) {
+	workers := make([]iTopicWorker, 0, 16)
 	defer func() {
-		if err != nil {
-			ps.Close()
+		for _, w := range workers {
+			w.close()
 		}
 	}()
 
-	ps.view, err = newTopicProcessor(
+	registerWorker := func(w iTopicWorker) {
+		workers = append(workers, w)
+	}
+
+	view, err := newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "view",
@@ -37,10 +39,11 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
+	registerWorker(&view)
 
-	ps.like, err = newTopicProcessor(
+	like, err := newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "like",
@@ -55,10 +58,11 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
+	registerWorker(&like)
 
-	ps.comment, err = newTopicProcessor(
+	comment, err := newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "comment",
@@ -73,10 +77,11 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
+	registerWorker(&comment)
 
-	ps.registration, err = newTopicProcessor(
+	registration, err := newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "registration",
@@ -91,10 +96,11 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
 	}
+	registerWorker(&registration)
 
-	ps.posts, err = newTopicProcessor(
+	posts, err := newTopicWorker(
 		connCfg,
 		kafka.ConsumerConfig{
 			Topic:   "post",
@@ -109,24 +115,28 @@ func NewProcessor(connCfg kafka.ConnectionConfig, db repo.Database) (ps Processo
 		},
 	)
 	if err != nil {
-		return Processor{}, err
+		return Workers{}, err
+	}
+	registerWorker(&posts)
+
+	result := Workers{
+		workers: workers,
+	}
+	workers = nil
+	return result, nil
+}
+
+func (r *Workers) Start(ctx context.Context) {
+	for _, w := range r.workers {
+		w.start(ctx)
+	}
+}
+
+func (r *Workers) Close() error {
+	errs := make([]error, len(r.workers))
+	for i, w := range r.workers {
+		errs[i] = w.close()
 	}
 
-	return
-}
-
-func (r *Processor) Start(ctx context.Context) {
-	r.view.start(ctx)
-	r.like.start(ctx)
-	r.comment.start(ctx)
-	r.registration.start(ctx)
-	r.posts.start(ctx)
-}
-
-func (r *Processor) Close() {
-	r.view.close()
-	r.like.close()
-	r.comment.close()
-	r.registration.close()
-	r.posts.close()
+	return errors.Join(errs...)
 }

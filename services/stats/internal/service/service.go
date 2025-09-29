@@ -18,7 +18,7 @@ type StatsService struct {
 	pb.UnimplementedStatsServiceServer
 
 	Db             repo.Database
-	KafkaProcessor kafkajobs.Processor
+	KafkaProcessor kafkajobs.Workers
 }
 
 func New(cfg Config) (StatsService, error) {
@@ -35,7 +35,7 @@ func New(cfg Config) (StatsService, error) {
 		return StatsService{}, err
 	}
 
-	kafkaProcessor, err := kafkajobs.NewProcessor(kafka.ConnectionConfig{
+	kafkaProcessor, err := kafkajobs.NewWorkers(kafka.ConnectionConfig{
 		Host: cfg.KafkaHost,
 		Port: cfg.KafkaPort,
 	}, &db)

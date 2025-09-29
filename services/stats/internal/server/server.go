@@ -11,11 +11,10 @@ import (
 
 type Server struct {
 	grpcServer *grpc.Server
-	service    service.StatsService
-	port       int
+	service    *service.StatsService
 }
 
-func New(port int, cfg service.Config) (Server, error) {
+func New(cfg service.Config) (Server, error) {
 	service, err := service.New(cfg)
 	if err != nil {
 		return Server{}, err
@@ -26,15 +25,14 @@ func New(port int, cfg service.Config) (Server, error) {
 
 	return Server{
 		grpcServer: grpcServer,
-		service:    service,
-		port:       port,
+		service:    &service,
 	}, nil
 }
 
-func (s *Server) Run() error {
+func (s *Server) Run(port int) error {
 	s.service.Start()
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return err
 	}
