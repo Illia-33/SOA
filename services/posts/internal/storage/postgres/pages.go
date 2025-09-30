@@ -19,28 +19,16 @@ type pagesRepo struct {
 
 func (r pagesRepo) GetByAccountId(accountId models.AccountId) (models.Page, error) {
 	sql := `
-	SELECT id, visible_for_unauthorized, comments_enabled, anyone_can_post
-	FROM pages
-	WHERE account_id = $1;
+	INSERT INTO pages(account_id)
+	VALUES ($1)
+	ON CONFLICT(account_id) DO UPDATE
+	SET account_id = pages.account_id
+	RETURNING id, visible_for_unauthorized, comments_enabled, anyone_can_post;
 	`
 	var page models.Page
 
 	row := r.scope.QueryRow(r.ctx, sql, accountId)
 	err := row.Scan(&page.Id, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
-	if err == nil { // ok, returning
-		page.AccountId = models.AccountId(accountId)
-		return page, nil
-	}
-
-	// otherwise, creating new page for user
-	sql = `
-	INSERT INTO pages(account_id)
-	VALUES ($1)
-	RETURNING id, visible_for_unauthorized, comments_enabled, anyone_can_post;
-	`
-
-	row = r.scope.QueryRow(r.ctx, sql, accountId)
-	err = row.Scan(&page.Id, &page.VisibleForUnauthorized, &page.CommentsEnabled, &page.AnyoneCanPost)
 	if err != nil {
 		return models.Page{}, err
 	}
