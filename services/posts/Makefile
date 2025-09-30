@@ -20,3 +20,8 @@ image:
 	--file $(PWD)/Dockerfile \
 	--tag soa-posts-service \
 	$(PWD)
+
+.PHONY: test
+test:
+	DB_MIGRATIONS="$(PWD)/db/migrations" go test -v -count=1 $(PWD)/internal/...
+	go test -v -count=1 $(PWD)/pkg/...
