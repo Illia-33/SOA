@@ -41,7 +41,7 @@ func NewDB(cfg Config) (Database, error) {
 
 	err = conn.Ping(context.Background())
 	if err != nil {
-		return Database{}, nil
+		return Database{}, err
 	}
 
 	return Database{
