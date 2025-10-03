@@ -3,49 +3,41 @@
 hide circle
 skinparam linetype ortho
 
-entity post {
-    * id: integer
-    --
-    ...
+entity posts_views {
+    * post_id: Int32
+    * viewer_account_id: Int32
+    * view_time: DateTime
 }
 
-entity post_statistics {
-    * id: integer
-    * post_id: integer
-    --
-    like_count: integer
-    comment_count: integer
-    view_count: integer
+entity posts_likes {
+    * post_id: Int32
+    * liker_account_id: Int32
+    * like_time: DateTime
 }
 
-entity like {
-    * id: integer
-    * post_statistics_id: integer
-    --
-    * account_id: integer
-    * put_time: timestamp
-
+entity posts_comments {
+    * post_id: Int32
+    * author_account_id: Int32
+    * comment_id: Int32
+    * post_time: DateTime
 }
 
-entity view {
-    * id: integer
-    * post_statistics_id: integer
-    --
-    * viewed_time: timestamp
+entity registrations {
+    * account_id: Int32
+    * profile_id: String
+    * register_time: DateTime
 }
 
-entity comment {
-    * id: integer
-    * post_statistics_id: integer
-    --
-    * commented_time: timestamp
-    * has_reply: boolean
-    * length: integer
+entity posts {
+    * post_id: Int32
+    * author_id: Int32
+    * post_time: DateTime
 }
 
-post ||--|| post_statistics
-post_statistics ||--o{ like
-post_statistics ||--o{ view
-post_statistics ||--o{ comment
+entity agg_post_metrics {
+    * post_id: Int32
+    * metric: LowCardinality(String)
+    * cnt: AggregateFunction(count, UInt64)
+}
 
 @enduml

@@ -3,43 +3,60 @@
 hide circle
 skinparam linetype ortho
 
-entity account {
-    * id: integer
+entity pages {
+    * id: integer <<PK>>
     --
-    ...
+    account_id: integer <<UNIQUE, NOT NULL>>
+    visible_for_unauthorized: boolean <<NOT NULL, DEFAULT true>>
+    comments_enabled: boolean <<NOT NULL, DEFAULT true>>
+    anyone_can_post: boolean <<NOT NULL, DEFAULT true>>
+    created_at: timestamptz <<NOT NULL, DEFAULT now()>>
+    updated_at: timestamptz <<NOT NULL, DEFAULT now()>>
 }
 
-entity page {
-    * id: integer
-    * account_id: integer
+entity posts {
+    * id: integer <<PK>>
     --
-    is_visible_for_unauthorized: boolean
-    are_comments_enabled: boolean
-    anyone_can_post: boolean
+    page_id: integer <<NOT NULL>>
+    author_account_id: integer <<NOT NULL>>
+    text_content: text <<NOT NULL>>
+    source_post_id: integer
+    pinned: boolean <<NOT NULL, DEFAULT false>>
+    views_count: integer <<NOT NULL, DEFAULT 0>>
+    created_at: timestamptz <<NOT NULL, DEFAULT now()>>
+    updated_at: timestamptz <<NOT NULL, DEFAULT now()>>
 }
 
-entity post {
-    * id: integer
-    * page_id: integer
+entity comments {
+    * id: integer <<PK>>
     --
-    * content: text
-    * post_time: timestamp
-    * author_account_id
-    source_page_id: integer
-    pinned: boolean
+    post_id: integer <<NOT NULL>>
+    author_account_id: integer <<NOT NULL>>
+    text_content: text <<NOT NULL>>
+    reply_comment_id: integer
+    created_at: timestamptz <<NOT NULL, DEFAULT now()>>
+    updated_at: timestamptz <<NOT NULL, DEFAULT now()>>
 }
 
-entity comment {
-    * id: integer
-    * post_id: integer
-    * author_account_id: integer
+entity likes {
+    * post_id: integer <<PK>>
+    * author_account_id: integer <<PK>>
     --
-    * content: text
-    reply_account_id: integer
+    created_at: timestamptz <<NOT NULL, DEFAULT now()>>
 }
 
-account ||--|| page : has
-page ||--o{ post : has
-post ||--o{ comment : has
+entity outbox {
+    * id: integer <<PK>>
+    --
+    is_processed: boolean <<NOT NULL, DEFAULT false>>
+    event_type: varchar(64) <<NOT NULL>>
+    payload: jsonb <<NOT NULL>>
+    updated_at: timestamptz <<NOT NULL, DEFAULT now()>>
+    created_at: timestamptz <<NOT NULL, DEFAULT now()>>
+}
+
+pages ||--o{ posts : "has many"
+posts ||--o{ comments : "has many"
+posts ||--o{ likes : "has many"
 
 @enduml

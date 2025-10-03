@@ -4,36 +4,36 @@
 entity "accounts" as accounts {
     *id : int <<PK>>
     --
-    login : varchar(32) <<UNIQUE>>
-    password : varchar(32)
-    email : varchar(320) <<UNIQUE>>
-    phone_number : varchar(18) <<UNIQUE>>
-    created_at : timestamptz
-    updated_at : timestamptz
+    login : varchar(32) <<UNIQUE, NOT NULL>>
+    password : varchar(32) <<NOT NULL>>
+    email : varchar(320)
+    phone_number : varchar(18)
+    created_at : timestamptz <<NOT NULL, DEFAULT now()>>
+    updated_at : timestamptz <<NOT NULL, DEFAULT now()>>
 }
 
 entity "profiles" as profiles {
     *id : int <<PK>>
     --
-    account_id : int <<FK, UNIQUE>>
-    name : varchar(32)
-    surname : varchar(32)
-    profile_id : uuid <<UNIQUE>>
+    account_id : int <<FK, UNIQUE, NOT NULL>>
+    name : varchar(32) <<NOT NULL>>
+    surname : varchar(32) <<NOT NULL>>
+    profile_id : uuid <<UNIQUE, NOT NULL>>
     birthday : date
     bio : varchar(200)
-    created_at : timestamptz
-    updated_at : timestamptz
+    created_at : timestamptz <<NOT NULL, DEFAULT now()>>
+    updated_at : timestamptz <<NOT NULL, DEFAULT now()>>
 }
 
 entity "api_tokens" as api_tokens {
     *id : int <<PK>>
     --
-    account_id : int <<FK>>
-    token : varchar(64) <<UNIQUE>>
-    valid_until : timestamptz
-    read_access : boolean
-    write_access : boolean
-    created_at : timestamptz
+    account_id : int <<FK, NOT NULL>>
+    token : varchar(64) <<UNIQUE, NOT NULL>>
+    valid_until : timestamptz <<NOT NULL, DEFAULT now()>>
+    read_access : boolean <<NOT NULL>>
+    write_access : boolean <<NOT NULL>>
+    created_at : timestamptz <<NOT NULL, DEFAULT now()>>
 }
 
 ' Relations
