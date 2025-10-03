@@ -79,7 +79,7 @@ To stop the stack, press Ctrl+C in the compose terminal. If needed, run docker c
 - make builder-image: Build the base Go builder image used by services
 - make autogen: Generate protobuf stubs for all services
 - make run: Start the full stack with docker compose using .env
-- make unit-tests: Run unit tests for accounts, posts, stats
+- make unit-tests: Run unit tests for services
 - make e2e-tests: Spin up stack using test.env, run e2e tests, then tear down
 - make tests: Run both unit and e2e tests
 
@@ -167,7 +167,3 @@ Request/response schemas are defined under services/gateway/api/ and swagger.yam
 
 - JWT keys in test.env are only for local development. Provide your own secure keys in production.
 - Do not commit real secrets. Prefer environment-specific .env files or secret stores.
-
----
-
-This README supersedes the previous placeholder and provides a complete project overview, setup, and operations guide.
