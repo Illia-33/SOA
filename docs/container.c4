@@ -1,60 +1,67 @@
 model {
     gateway = service {
         title 'Gateway'
-        description 'Provides REST API for UI application'
+        description 'Provides public REST API for UI; delegates to internal gRPC services'
+        technology 'Go + Gin'
     }
 
     accountsService = service {
         title 'Accounts Service'
-        description 'Registers new accounts, authenticate users, provides user info'
+        description 'Registers accounts, authenticates users, issues JWT and API tokens'
+        technology 'Go + gRPC'
     }
 
     accountsDb = database {
         title 'Accounts DB'
-        description 'Storage of account info'
+        description 'Storage of account and profile data'
         technology 'PostgreSQL'
     }
 
     postsService = service {
         title 'Posts Service'
-        description 'Provide posts data'
+        description 'Pages, posts, comments. Emits events via outbox to Kafka'
+        technology 'Go + gRPC'
     }
 
     postsDb = database {
         title 'Posts DB'
-        description 'Storage of posts data'
+        description 'Storage of page, post and comment data'
         technology 'PostgreSQL'
     }
 
     statisticsService = service {
         title 'Statistics Service'
-        description 'Counting likes, views, comments'
+        description 'Consumes events, aggregates metrics, serves analytics via gRPC'
+        technology 'Go + gRPC'
     }
 
     statisticsDb = database {
         title 'Statistics DB'
-        description 'Storage for statistics'
+        description 'Analytics data store (events and aggregates)'
         technology 'ClickHouse'
     }
 
     statisticsBroker = broker {
         title 'Statistic events broker'
-        description 'Stores occured events for future processing'
+        description 'Event stream for views, likes, comments, registrations, posts'
         technology 'Kafka'
     }
 
-    user -> gateway
+    user -> gateway 'Uses REST API'
 
-    gateway -> accountsService
-    gateway -> postsService
-    gateway -> statisticsBroker
+    gateway -> accountsService 'gRPC'
+    gateway -> postsService 'gRPC'
+    gateway -> statisticsService 'gRPC'
 
-    accountsService -> accountsDb
+    accountsService -> accountsDb 'SQL'
 
-    postsService -> postsDb
+    postsService -> postsDb 'SQL'
 
-    statisticsService -> statisticsDb
-    statisticsService -> statisticsBroker
+    accountsService -> statisticsBroker 'Produce events'
+    postsService -> statisticsBroker 'Produce events'
+
+    statisticsService -> statisticsBroker 'Consume events'
+    statisticsService -> statisticsDb 'SQL'
 }
 
 views {

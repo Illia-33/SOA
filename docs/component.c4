@@ -24,16 +24,16 @@ specification {
 model {
     user = actor {
         title 'User'
+        description 'End-user interacting via UI or HTTP client'
     }
 
     socialNetworkApp = service {
         title 'Social Network'
-        description 'Social Network Application'
+        description 'Service-oriented social network application'
     }
 
     user -> socialNetworkApp 'Uses through UI'
 }
-
 
 views {
     view contextView {
