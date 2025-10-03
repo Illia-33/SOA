@@ -299,20 +299,20 @@ func TestGetCommentCountDynamics(t *testing.T) {
 }
 
 func TestGetTop10PostsByViewCount(t *testing.T) {
-	id := registerUserOk(t, map[string]any{
-		"login":        "top_poster_views",
-		"password":     "testpasswd",
-		"email":        "top_poster_views@yahoo.com",
-		"phone_number": "+79250000028",
-		"name":         "Top",
-		"surname":      "PosterViews",
-	})
-
-	const TOP_POST_VIEW_COUNT = 60
+	const TOP_POST_VIEW_COUNT = 20
 	postIds := make([]int, 10)
 	for postNum := range 10 {
+		id := registerUserOk(t, map[string]any{
+			"login":        fmt.Sprintf("top_poster_views_%d", postNum),
+			"password":     "testpasswd",
+			"email":        fmt.Sprintf("top_poster_views_%d@yahoo.com", postNum),
+			"phone_number": fmt.Sprintf("+7925000028%d", postNum),
+			"name":         "Top",
+			"surname":      fmt.Sprintf("PosterViews_%d", postNum),
+		})
+
 		token := authenticateOk(t, map[string]any{
-			"login":    "top_poster_views",
+			"login":    fmt.Sprintf("top_poster_views_%d", postNum),
 			"password": "testpasswd",
 		})
 
@@ -327,7 +327,7 @@ func TestGetTop10PostsByViewCount(t *testing.T) {
 		}
 	}
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	top10Posts := getTop10PostsOk(t, "view_count")
 
@@ -382,12 +382,12 @@ func TestGetTop10UsersByViewCount(t *testing.T) {
 		}
 	}
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	top10Users := getTop10UsersOk(t, "view_count")
 	require.Equal(t, 10, len(top10Users))
 	for i, user := range top10Users {
-		require.Equal(t, user["user_id"].(string), profileIds[i])
-		require.Equal(t, int(user["value"].(float64)), TOP_USER_VIEW_COUNT-i)
+		require.Equal(t, profileIds[i], user["user_id"].(string))
+		require.Equal(t, TOP_USER_VIEW_COUNT-i, int(user["value"].(float64)))
 	}
 }
