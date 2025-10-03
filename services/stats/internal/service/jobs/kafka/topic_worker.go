@@ -18,8 +18,13 @@ type messageBatch[TMsg any] []kafka.Message[TMsg]
 type batchProcessor[TMsg any] func(context.Context, messageBatch[TMsg]) error
 
 type topicWorker[TMsg any] struct {
-	consumer     kafka.Consumer[TMsg]
-	processBatch batchProcessor[TMsg]
+	consumer             kafka.Consumer[TMsg]
+	processBatchCallback batchProcessor[TMsg]
+
+	batchCapacity         int
+	messagesChanCapacity  int
+	processorTick         time.Duration
+	consumerErrorWaitTime time.Duration
 }
 
 func newTopicWorker[TMsg any](
@@ -33,19 +38,22 @@ func newTopicWorker[TMsg any](
 	}
 
 	return topicWorker[TMsg]{
-		consumer:     r,
-		processBatch: processBatch,
+		consumer:             r,
+		processBatchCallback: processBatch,
+
+		batchCapacity:         10,
+		messagesChanCapacity:  30,
+		processorTick:         100 * time.Millisecond,
+		consumerErrorWaitTime: 100 * time.Millisecond,
 	}, nil
 }
 
 func (w *topicWorker[TMsg]) start(ctx context.Context) {
-	const DEFAULT_BATCH_CAPACITY = 10
-	const DEFAULT_CHAN_CAPACITY = 30
+	messagesChan := make(chan kafka.Message[TMsg], w.messagesChanCapacity)
 
-	messagesChan := make(chan kafka.Message[TMsg], DEFAULT_CHAN_CAPACITY)
 	batchContext := topicProcessorContext[TMsg]{
-		bufferSize: DEFAULT_BATCH_CAPACITY,
-		processor:  w.processBatch,
+		bufferSize: w.batchCapacity,
+		processor:  w.processBatchCallback,
 		consumer:   &w.consumer,
 	}
 	batchContext.init()
@@ -64,7 +72,7 @@ func (w *topicWorker[TMsg]) startConsumerRoutine(ctx context.Context, c chan<- k
 				}
 
 				log.Printf("error occured while fetching %T message from kafka: %v", msg, err)
-				time.Sleep(500 * time.Millisecond)
+				time.Sleep(w.consumerErrorWaitTime)
 				continue
 			}
 			c <- msg
@@ -81,7 +89,7 @@ func (w *topicWorker[TMsg]) startProcessorRoutine(ctx context.Context, c <-chan 
 			if processorCtx.isBatchBufferFull() {
 				err := processorCtx.tryProcessBatch(ctx)
 				if err != nil {
-					time.Sleep(500 * time.Millisecond)
+					time.Sleep(w.processorTick)
 				}
 				continue
 			}
@@ -96,7 +104,7 @@ func (w *topicWorker[TMsg]) startProcessorRoutine(ctx context.Context, c <-chan 
 					processorCtx.putMessage(msg)
 				}
 
-			case <-time.NewTimer(500 * time.Millisecond).C:
+			case <-time.NewTimer(w.processorTick).C:
 				{
 					processorCtx.tryProcessBatch(ctx)
 				}
@@ -109,7 +117,8 @@ func (w *topicWorker[TMsg]) startProcessorRoutine(ctx context.Context, c <-chan 
 }
 
 func (w *topicWorker[TMsg]) close() error {
-	return w.consumer.Close()
+	w.consumer.Close()
+	return nil
 }
 
 type topicProcessorContext[TMsg any] struct {
