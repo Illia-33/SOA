@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,7 +23,8 @@ type ConsumerConfig struct {
 }
 
 type Consumer[MsgType any] struct {
-	reader *kafka.Reader
+	reader    *kafka.Reader
+	closeChan chan struct{}
 }
 
 type Message[MsgType any] struct {
@@ -36,21 +38,35 @@ func NewConsumer[MsgType any](connCfg ConnectionConfig, readerCfg ConsumerConfig
 		Brokers: []string{fmt.Sprintf("%s:%d", connCfg.Host, connCfg.Port)},
 		GroupID: readerCfg.GroupId,
 		Topic:   readerCfg.Topic,
+		// Logger:      log.Default(),
+		// ErrorLogger: log.Default(),
 	}
 
 	reader := kafka.NewReader(cfg)
+	closeChan := make(chan struct{})
 	{
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 		go func() {
 			<-c
-			reader.Close()
+			closeChan <- struct{}{}
 		}()
 	}
 
-	return Consumer[MsgType]{
-		reader: reader,
-	}, nil
+	consumer := Consumer[MsgType]{
+		reader:    reader,
+		closeChan: closeChan,
+	}
+
+	go func() {
+		<-closeChan
+		err := consumer.close()
+		if err != nil {
+			log.Printf("error occurred while closing kafka consumer: %v", err)
+		}
+	}()
+
+	return consumer, nil
 }
 
 func (c *Consumer[MsgType]) FetchMessage(ctx context.Context) (Message[MsgType], error) {
@@ -81,7 +97,14 @@ func (c *Consumer[MsgType]) CommitMessages(ctx context.Context, messages ...Mess
 	return c.reader.CommitMessages(ctx, kafkaMsgs...)
 }
 
-func (c *Consumer[MsgType]) Close() error {
+func (c *Consumer[MsgType]) Close() {
+	if c.closeChan != nil {
+		c.closeChan <- struct{}{}
+		c.closeChan = nil
+	}
+}
+
+func (c *Consumer[MsgType]) close() error {
 	if c.reader == nil {
 		return nil
 	}
